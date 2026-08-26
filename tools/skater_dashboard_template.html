@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skater Tracking &middot; Trey Chase</title>
+<meta name="description" content="Player tracking replayed in real time: every skater and the puck moving across the rink, with velocity arrows and a scrub bar.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#ECEFE6;--panel:#E3E7DB;--ink:#14201B;--muted:#4B5A52;
+  --field:#1F5C43;--field-deep:#153F2E;--gold:#DFA22C;
+  --line:rgba(20,32,27,.16);--line-soft:rgba(20,32,27,.08);
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
+.bar{
+  position:sticky;top:0;z-index:20;background:var(--field);
+  border-bottom:1px solid var(--field-deep);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 22px;font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.bar a{color:rgba(236,239,230,.75);text-decoration:none}
+.bar a:hover{color:var(--paper)}
+.bar .who{color:var(--paper);font-weight:500}
+main{max-width:1180px;margin:0 auto;padding:22px}
+h1{
+  font-family:var(--sans);font-size:clamp(1.3rem,3vw,1.9rem);font-weight:800;
+  letter-spacing:-.02em;margin:0 0 6px;text-transform:uppercase;
+}
+.sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+     color:var(--muted);margin:0 0 18px}
+.rinkwrap{background:var(--panel);border:1px solid var(--line);padding:10px}
+canvas{display:block;width:100%;height:auto}
+.controls{
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-top:14px;
+}
+button{
+  appearance:none;cursor:pointer;font-family:var(--mono);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;padding:9px 16px;border-radius:999px;
+  border:1px solid var(--line);background:var(--paper);color:var(--ink);
+  transition:background .18s ease,border-color .18s ease,color .18s ease;
+}
+button:hover{border-color:var(--field);color:var(--field)}
+button.primary{background:var(--field);border-color:var(--field);color:var(--paper);min-width:104px}
+button.primary:hover{background:var(--field-deep);border-color:var(--field-deep);color:var(--paper)}
+button.on{background:var(--field);border-color:var(--field);color:var(--paper)}
+/* without this, hovering a button that is already on paints its own text the
+   same green as its background */
+button.on:hover{background:var(--field-deep);border-color:var(--field-deep);color:var(--paper)}
+.speeds{display:inline-flex;gap:6px}
+.speeds button{padding:9px 12px;min-width:52px}
+input[type=range]{flex:1 1 260px;accent-color:var(--field);min-width:200px}
+.hud{
+  display:flex;flex-wrap:wrap;gap:10px 28px;margin-top:14px;padding-top:14px;
+  border-top:1px solid var(--line-soft);
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+}
+.hud b{color:var(--ink);font-weight:700}
+.clock{font-size:15px;letter-spacing:.06em;color:var(--ink);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+.note{
+  border-left:3px solid var(--gold);background:rgba(223,162,44,.1);
+  padding:14px 16px;margin:20px 0 0;font-size:15px;line-height:1.55;max-width:70ch;
+}
+.note b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:6px;color:var(--field-deep)}
+footer{
+  border-top:1px solid var(--line);margin-top:40px;padding:24px 22px 40px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between;
+}
+footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important}}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a href="../index.html#hockey">&#8249;&nbsp;&nbsp;Back to projects</a>
+  <span class="who">Skater tracking</span>
+</div>
+
+<main>
+  <h1>Skaters, in real time</h1>
+  <p class="sub" id="subline">Player tracking replay</p>
+
+  <div class="rinkwrap"><canvas id="rink"></canvas></div>
+
+  <div class="controls">
+    <button class="primary" id="play">Pause</button>
+    <span class="speeds" id="speeds">
+      <button data-rate="0.5">0.5&times;</button>
+      <button data-rate="1" class="on">1&times;</button>
+      <button data-rate="2">2&times;</button>
+    </span>
+    <input type="range" id="scrub" min="0" max="100" value="0" step="1" aria-label="Period time">
+    <span class="clock" id="clock">00:00</span>
+  </div>
+
+  <div class="controls">
+    <button id="arrows">Velocity arrows</button>
+    <button id="trails" class="on">Trails</button>
+    <button id="labels" class="on">Numbers</button>
+    <span class="legend">
+      <span><i class="dot" id="lg-home"></i> <span id="lg-home-t">Home</span></span>
+      <span><i class="dot" id="lg-away"></i> <span id="lg-away-t">Away</span></span>
+      <span><i class="dot" style="background:#111"></i> Puck</span>
+    </span>
+  </div>
+
+  <div class="hud">
+    <span>On ice <b id="onice">0</b></span>
+    <span>Possession <b id="poss">&mdash;</b></span>
+    <span>Fastest now <b id="fastest">&mdash;</b></span>
+    <span id="feed">&mdash;</span>
+  </div>
+
+  <div class="note">
+    <b>What you are watching</b>
+    One period of tracking, replayed at the speed it happened. Positions are the
+    feed's own, rounded to a tenth of a foot; between samples the skaters are
+    interpolated so the motion is continuous rather than stepped. Velocity is
+    measured over a full second, not frame to frame &mdash; over a single frame the
+    rounding alone is worth about 2.5 ft/s, which is enough to pin every skater to
+    the top of the scale and rank nobody. The number inside each skater is the tail
+    of his tracking id, not a sweater number &mdash; the feed carries no roster.
+  </div>
+</main>
+
+<footer>
+  <span>&copy; 2026 Trey Chase</span>
+  <span><a href="../index.html">Back to the site</a></span>
+</footer>
+
+<script>
+(function () {
+  var D = "__DATA__";
+  var R = D.rink, C = D.colors;
+  var PAD = 4;                        // feet of margin around the boards
+  var MAX_SPEED = 40;                 // ft/s, the ceiling the analysis screens at
+  var BASE = Math.max(1, Math.round(1 / D.dt));   // samples in a one-second baseline
+  var TRAIL = Math.max(2, Math.round(0.8 / D.dt));
+
+  /* ---------- unpack: segments to a flat array per entity ---------- */
+  function expand(segs) {
+    var a = new Float32Array(D.n * 2);
+    a.fill(NaN);
+    for (var s = 0; s < segs.length; s++) {
+      var start = segs[s][0], xy = segs[s][1];
+      for (var k = 0; k < xy.length; k += 2) {
+        var i = start + (k >> 1);
+        if (i >= D.n) break;
+        a[i * 2] = xy[k] / 10;
+        a[i * 2 + 1] = xy[k + 1] / 10;
+      }
+    }
+    return a;
+  }
+  var puck = expand(D.puck);
+  var skaters = D.skaters.map(function (s) {
+    return { id: s.id, home: !!s.home, pos: expand(s.segs), label: String(s.id).slice(-2) };
+  });
+
+  var possAt = new Array(D.n), cur = "";
+  for (var i = 0, p = 0; i < D.n; i++) {
+    while (p < D.possession.length && D.possession[p][0] <= i) { cur = D.possession[p][1]; p++; }
+    possAt[i] = cur;
+  }
+
+  /* ---------- canvas ---------- */
+  var cv = document.getElementById('rink'), ctx = cv.getContext('2d');
+  var ice = document.createElement('canvas'), ictx = ice.getContext('2d');
+  var W = 0, H = 0, scale = 1, dpr = 1;
+
+  function X(ft) { return (ft + R.length / 2 + PAD) * scale; }
+  function Y(ft) { return (R.width / 2 + PAD - ft) * scale; }
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    var cssW = cv.parentElement.clientWidth - 20;
+    scale = cssW / (R.length + 2 * PAD);
+    W = cssW; H = (R.width + 2 * PAD) * scale;
+    [cv, ice].forEach(function (c) {
+      c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    });
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ictx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawRink();
+    draw();
+  }
+
+  function roundedRink(c) {
+    var l = X(-R.length / 2), r = X(R.length / 2), t = Y(R.width / 2), b = Y(-R.width / 2);
+    var rad = R.corner * scale;
+    c.beginPath();
+    c.moveTo(l + rad, t);
+    c.lineTo(r - rad, t); c.quadraticCurveTo(r, t, r, t + rad);
+    c.lineTo(r, b - rad); c.quadraticCurveTo(r, b, r - rad, b);
+    c.lineTo(l + rad, b); c.quadraticCurveTo(l, b, l, b - rad);
+    c.lineTo(l, t + rad); c.quadraticCurveTo(l, t, l + rad, t);
+    c.closePath();
+  }
+
+  /* half the rink width at a given x, so the goal line stops at the boards */
+  function halfWidthAt(x) {
+    var cx = R.length / 2 - R.corner, cy = R.width / 2 - R.corner;
+    if (Math.abs(x) <= cx) return R.width / 2;
+    var d = R.corner * R.corner - Math.pow(Math.abs(x) - cx, 2);
+    return d <= 0 ? cy : cy + Math.sqrt(d);
+  }
+
+  function line(c, x1, y1, x2, y2, color, w) {
+    c.beginPath(); c.moveTo(X(x1), Y(y1)); c.lineTo(X(x2), Y(y2));
+    c.strokeStyle = color; c.lineWidth = w; c.stroke();
+  }
+  function circle(c, x, y, rFt, color, w, fill) {
+    c.beginPath(); c.arc(X(x), Y(y), rFt * scale, 0, Math.PI * 2);
+    if (fill) { c.fillStyle = color; c.fill(); } else { c.strokeStyle = color; c.lineWidth = w; c.stroke(); }
+  }
+
+  function drawRink() {
+    ictx.clearRect(0, 0, W, H);
+    roundedRink(ictx);
+    ictx.fillStyle = C.ice; ictx.fill();
+    ictx.strokeStyle = C.board; ictx.lineWidth = 2; ictx.stroke();
+
+    ictx.save(); roundedRink(ictx); ictx.clip();
+    line(ictx, 0, -R.width / 2, 0, R.width / 2, C.red, 2.5);
+    [-1, 1].forEach(function (s) {
+      line(ictx, s * R.blueLine, -R.width / 2, s * R.blueLine, R.width / 2, C.blue, 2.5);
+      var gx = s * R.goalLine, half = halfWidthAt(gx);
+      line(ictx, gx, -half, gx, half, C.red, 1.5);
+      /* crease, the half circle that faces the ice */
+      ictx.beginPath();
+      ictx.arc(X(gx), Y(0), R.creaseR * scale,
+               s > 0 ? Math.PI / 2 : -Math.PI / 2, s > 0 ? 1.5 * Math.PI : Math.PI / 2);
+      ictx.fillStyle = C.crease; ictx.fill();
+      ictx.strokeStyle = C.blue; ictx.lineWidth = 1.2; ictx.stroke();
+      /* net */
+      ictx.beginPath();
+      ictx.rect(X(s > 0 ? gx : gx - 4), Y(3), 4 * scale, 6 * scale);
+      ictx.strokeStyle = C.board; ictx.lineWidth = 1.2; ictx.stroke();
+    });
+    circle(ictx, 0, 0, R.circleR, C.blue, 1.2, false);
+    circle(ictx, 0, 0, 1, C.blue, 0, true);
+    [-R.spotX, R.spotX].forEach(function (sx) {
+      [-R.spotY, R.spotY].forEach(function (sy) {
+        circle(ictx, sx, sy, R.circleR, C.red, 1.2, false);
+        circle(ictx, sx, sy, 1, C.red, 0, true);
+      });
+    });
+    [-R.neutralX, R.neutralX].forEach(function (sx) {
+      [-R.spotY, R.spotY].forEach(function (sy) { circle(ictx, sx, sy, 1, C.red, 0, true); });
+    });
+    ictx.restore();
+  }
+
+  /* ---------- playback ---------- */
+  var t = 0;                    // seconds into the period sample grid
+  var dur = (D.n - 1) * D.dt;
+  var rate = 1, playing = true, last = 0;
+  var showArrows = false, showTrails = true, showLabels = true;
+
+  function at(a, i) {           // one entity's position at a sample index
+    var x = a[i * 2];
+    return isNaN(x) ? null : [x, a[i * 2 + 1]];
+  }
+  function lerpAt(a, i0, f) {
+    var p0 = at(a, i0), p1 = i0 + 1 < D.n ? at(a, i0 + 1) : null;
+    if (!p0) return p1;
+    if (!p1) return p0;
+    return [p0[0] + (p1[0] - p0[0]) * f, p0[1] + (p1[1] - p0[1]) * f];
+  }
+  function speedAt(a, i0) {     // ft/s over a one-second baseline
+    var j = i0 - BASE;
+    if (j < 0) return null;
+    var p0 = at(a, j), p1 = at(a, i0);
+    if (!p0 || !p1) return null;
+    var dx = p1[0] - p0[0], dy = p1[1] - p0[1];
+    var v = Math.sqrt(dx * dx + dy * dy) / (BASE * D.dt);
+    return v > MAX_SPEED ? null : { v: v, dx: dx, dy: dy };
+  }
+
+  function trail(a, i0, color, width) {
+    ctx.beginPath();
+    var started = false;
+    for (var k = Math.max(0, i0 - TRAIL); k <= i0; k++) {
+      var p = at(a, k);
+      if (!p) { started = false; continue; }
+      if (!started) { ctx.moveTo(X(p[0]), Y(p[1])); started = true; }
+      else ctx.lineTo(X(p[0]), Y(p[1]));
+    }
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.35; ctx.stroke(); ctx.globalAlpha = 1;
+  }
+
+  function draw() {
+    if (!W) return;
+    var f = t / D.dt, i0 = Math.min(D.n - 1, Math.floor(f)), frac = f - i0;
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(ice, 0, 0, W, H);
+
+    var rad = Math.max(7, Math.min(13, W / 105));
+    var onIce = 0, fastest = null;
+
+    skaters.forEach(function (s) {
+      var p = lerpAt(s.pos, i0, frac);
+      if (!p) return;
+      onIce++;
+      var color = s.home ? C.home : C.away;
+      if (showTrails) trail(s.pos, i0, color, 2);
+
+      var sp = speedAt(s.pos, i0);
+      if (sp && (!fastest || sp.v > fastest.v)) fastest = { v: sp.v, id: s.label, home: s.home };
+      if (showArrows && sp) {
+        var ux = sp.dx / (BASE * D.dt), uy = sp.dy / (BASE * D.dt);   // ft/s components
+        var ax = p[0] + ux * 0.35, ay = p[1] + uy * 0.35;             // 0.35 ft per ft/s
+        ctx.beginPath(); ctx.moveTo(X(p[0]), Y(p[1])); ctx.lineTo(X(ax), Y(ay));
+        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.globalAlpha = .75; ctx.stroke();
+        ctx.globalAlpha = 1;
+        var ang = Math.atan2(Y(ay) - Y(p[1]), X(ax) - X(p[0])), h = 6;
+        ctx.beginPath();
+        ctx.moveTo(X(ax), Y(ay));
+        ctx.lineTo(X(ax) - h * Math.cos(ang - 0.4), Y(ay) - h * Math.sin(ang - 0.4));
+        ctx.lineTo(X(ax) - h * Math.cos(ang + 0.4), Y(ay) - h * Math.sin(ang + 0.4));
+        ctx.closePath(); ctx.fillStyle = color; ctx.globalAlpha = .75; ctx.fill(); ctx.globalAlpha = 1;
+      }
+
+      ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), rad, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+      if (showLabels && rad >= 8) {
+        ctx.fillStyle = '#fff';
+        ctx.font = '600 ' + Math.round(rad) + 'px ' + getComputedStyle(document.body).fontFamily;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(s.label, X(p[0]), Y(p[1]) + 0.5);
+      }
+    });
+
+    var pk = lerpAt(puck, i0, frac);
+    if (pk) {
+      if (showTrails) trail(puck, i0, C.puck, 1.5);
+      ctx.beginPath(); ctx.arc(X(pk[0]), Y(pk[1]), Math.max(3.5, rad * 0.4), 0, Math.PI * 2);
+      ctx.fillStyle = C.puck; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    document.getElementById('onice').textContent = onIce;
+    document.getElementById('poss').textContent = possAt[i0] || '—';
+    document.getElementById('fastest').textContent =
+      fastest ? fastest.id + ' · ' + fastest.v.toFixed(1) + ' ft/s' : '—';
+    var secs = D.t0 + t;
+    document.getElementById('clock').textContent =
+      String(Math.floor(secs / 60)).padStart(2, '0') + ':' +
+      String(Math.floor(secs % 60)).padStart(2, '0');
+    scrub.value = String(Math.round(f));
+  }
+
+  /* ---------- loop ---------- */
+  function frame(now) {
+    if (playing) {
+      if (last) t = Math.min(dur, t + (now - last) / 1000 * rate);
+      last = now;
+      if (t >= dur) { playing = false; playBtn.textContent = 'Replay'; }
+      draw();
+    } else {
+      last = 0;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- controls ---------- */
+  var playBtn = document.getElementById('play');
+  var scrub = document.getElementById('scrub');
+  scrub.max = String(D.n - 1);
+
+  playBtn.addEventListener('click', function () {
+    if (t >= dur) t = 0;
+    playing = !playing; last = 0;
+    playBtn.textContent = playing ? 'Pause' : 'Play';
+    if (!playing) draw();
+  });
+  scrub.addEventListener('input', function () {
+    t = Math.min(dur, Number(scrub.value) * D.dt); last = 0; draw();
+  });
+  document.getElementById('speeds').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    rate = Number(b.dataset.rate);
+    Array.prototype.forEach.call(this.querySelectorAll('button'), function (x) {
+      x.classList.toggle('on', x === b);
+    });
+  });
+  function toggle(id, get, set) {
+    var b = document.getElementById(id);
+    b.addEventListener('click', function () {
+      set(!get()); b.classList.toggle('on', get()); draw();
+    });
+  }
+  toggle('arrows', function () { return showArrows; }, function (v) { showArrows = v; });
+  toggle('trails', function () { return showTrails; }, function (v) { showTrails = v; });
+  toggle('labels', function () { return showLabels; }, function (v) { showLabels = v; });
+
+  document.getElementById('lg-home').style.background = C.home;
+  document.getElementById('lg-away').style.background = C.away;
+  document.getElementById('lg-home-t').textContent = D.homeTeam + ' (home)';
+  document.getElementById('lg-away-t').textContent = D.awayTeam + ' (away)';
+  document.getElementById('subline').textContent =
+    'Game ' + D.game + ' · period ' + D.period + ' · ' + (1 / D.dt).toFixed(1) + ' samples per second';
+  document.getElementById('feed').textContent =
+    'Feed 25 Hz, replayed at ' + (1 / D.dt).toFixed(1) + ' Hz';
+
+  window.addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
