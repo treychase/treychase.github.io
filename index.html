@@ -183,21 +183,21 @@ h1.name .second{display:block;color:var(--field)}
 /* ---------- primary tabs ---------- */
 .tabsbar{
   position:sticky;top:0;z-index:20;
-  background:color-mix(in srgb,var(--paper) 92%,transparent);
-  backdrop-filter:blur(8px);
-  border-bottom:1px solid var(--line);
+  background:var(--field);
+  border-bottom:1px solid var(--field-deep);
 }
 .tablist{display:flex;gap:clamp(14px,3vw,34px);overflow-x:auto;scrollbar-width:none}
 .tablist::-webkit-scrollbar{display:none}
 .tab{
   appearance:none;background:none;border:0;padding:18px 0 15px;cursor:pointer;
-  color:var(--muted);
+  color:rgba(236,239,230,.7);
   font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
   white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;
   transition:color .18s ease,border-color .18s ease;
 }
-.tab:hover{color:var(--ink)}
-.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--gold)}
+.tab:hover{color:var(--paper)}
+.tab[aria-selected="true"]{color:var(--paper);border-bottom-color:var(--gold)}
+.tabsbar :focus-visible{outline-color:var(--gold)}
 
 /* ---------- panels ---------- */
 main{padding:clamp(40px,6vw,72px) 0 clamp(64px,10vw,120px);min-height:56vh}
@@ -330,6 +330,12 @@ h2.section{
 }
 .go::after{content:"\2192"}
 .go:hover{color:var(--field-deep);border-color:var(--field);gap:13px}
+.go.primary{
+  background:var(--field);color:var(--paper);border:1px solid var(--field);
+  border-radius:999px;padding:10px 18px;
+}
+.go.primary:hover{background:var(--field-deep);border-color:var(--field-deep);color:var(--paper)}
+.featured .card .go.primary{background:var(--field);color:var(--paper)}
 .attachments{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .attachments a{
   display:inline-flex;align-items:center;gap:7px;
@@ -470,7 +476,6 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     <div>
     <p class="eyebrow">Data scientist <span>/</span> statistician <span>/</span> sports analytics</p>
     <h1 class="name">Trey<span class="second">Chase</span></h1>
-    <ul class="credentials" id="credentials"></ul>
     <ul class="contact">
       <li><a href="mailto:treychase64@gmail.com">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2.5 7 9.5 6 9.5-6"/></svg>
@@ -482,6 +487,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.35-1.85 3.59 0 4.26 2.37 4.26 5.45v6.29zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>
         linkedin.com/in/trey-chase</a></li>
     </ul>
+    <ul class="credentials" id="credentials"></ul>
     </div>
 
     <figure class="portrait" id="portrait">
@@ -887,7 +893,10 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     var out = '';
     (e.links || []).forEach(function (l) {
       if (!l || !l.url) return;
-      out += '<a class="go" href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label || 'Open') + '</a>';
+      var ext = /^[a-z][a-z0-9+.-]*:|^\/\//i.test(l.url);
+      out += '<a class="go' + (l.primary ? ' primary' : '') + '" href="' + esc(l.url) + '"'
+           + (ext ? ' target="_blank" rel="noopener"' : '')
+           + '>' + esc(l.label || 'Open') + '</a>';
     });
     var files = (e.files || []).filter(function (f) { return f && f.path; });
     if (files.length) {

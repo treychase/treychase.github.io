@@ -121,6 +121,14 @@ projects/stuff-plus.html
 | --- | --- |
 | `Read the report` | `projects/stuff-plus.html` |
 
+`projects/mlb-daily-report.html` is a worked example: a full documentation page
+for the MLB Daily Report, styled to match the site, reached from the project
+card on both the front page and the Baseball tab.
+
+Tick **Button** on a link to render it as a filled call to action rather than a
+plain arrow link — useful for a "Launch the app" link that should stand out.
+Links to a full URL open in a new tab; repo-relative ones open in place.
+
 The link field takes a repo-relative path as happily as a full URL. The page is
 served straight from Pages at `https://treychase.github.io/projects/stuff-plus.html`,
 so the report keeps working even if someone opens it on its own.

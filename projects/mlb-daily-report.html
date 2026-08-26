@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLB Daily Report &middot; Trey Chase</title>
+<meta name="description" content="Documentation for the MLB Daily Report, a Shiny dashboard covering every MLB game from the previous day, with pitch run value, Bayesian win projections, and posterior-predictive prop pricing.">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --paper:#ECEFE6;--panel:#E3E7DB;--ink:#14201B;--muted:#4B5A52;
+  --field:#1F5C43;--field-deep:#153F2E;--gold:#DFA22C;
+  --line:rgba(20,32,27,.16);--line-soft:rgba(20,32,27,.08);
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"Newsreader",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --max:880px;--gut:clamp(20px,5vw,56px);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--body);font-size:17px;line-height:1.62;font-optical-sizing:auto;
+}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--field);outline-offset:3px;border-radius:2px}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:20;
+  background:var(--field);border-bottom:1px solid var(--field-deep);
+}
+.topbar .wrap{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding-top:12px;padding-bottom:12px;
+}
+.back{
+  display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(236,239,230,.72);transition:color .18s ease,gap .18s ease;
+}
+.back:hover{color:var(--paper);gap:14px}
+.back svg{width:12px;height:12px}
+.launch{
+  display:inline-flex;align-items:center;gap:9px;text-decoration:none;white-space:nowrap;
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;
+  background:var(--gold);color:var(--ink);border-radius:999px;padding:9px 17px;
+  transition:background .18s ease,transform .18s ease;
+}
+.launch:hover{background:#F2B53C;transform:translateY(-1px)}
+.topbar :focus-visible{outline-color:var(--gold)}
+
+/* ---------- hero ---------- */
+.hero{padding:clamp(38px,7vw,72px) 0 clamp(26px,4vw,40px)}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 16px;
+}
+.eyebrow span{color:var(--field)}
+h1{
+  font-family:var(--display);font-variation-settings:"wdth" 94;font-weight:800;
+  font-size:clamp(2.3rem,7vw,4rem);line-height:.94;letter-spacing:-.03em;
+  margin:0 0 20px;text-transform:uppercase;
+}
+.lede{font-size:clamp(1.08rem,2.2vw,1.3rem);line-height:1.5;font-weight:300;margin:0;max-width:56ch}
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px;margin:clamp(24px,4vw,34px) 0 0;padding:0;list-style:none;
+}
+.meta li{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:999px;padding:7px 13px;color:var(--muted);
+}
+.meta li.on{background:var(--field);border-color:var(--field);color:var(--paper)}
+
+/* ---------- sections ---------- */
+section{padding:clamp(30px,5vw,48px) 0;border-top:1px solid var(--line)}
+h2{
+  font-family:var(--display);font-variation-settings:"wdth" 90;font-weight:700;
+  font-size:clamp(1.35rem,3.2vw,1.9rem);letter-spacing:-.02em;line-height:1.1;
+  margin:0 0 8px;text-transform:uppercase;
+}
+.sub{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 clamp(20px,3vw,28px);
+}
+h3{
+  font-family:var(--display);font-variation-settings:"wdth" 92;font-weight:700;
+  font-size:1.1rem;letter-spacing:-.012em;margin:26px 0 8px;
+}
+p{margin:0 0 14px;max-width:68ch}
+p:last-child{margin-bottom:0}
+strong{font-weight:600}
+code{
+  font-family:var(--mono);font-size:.86em;
+  background:rgba(20,32,27,.07);padding:2px 6px;border-radius:3px;
+}
+
+/* ---------- feature list ---------- */
+.features{list-style:none;padding:0;margin:0;display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
+.features li{background:var(--paper);padding:18px clamp(16px,2.5vw,22px)}
+.features h4{
+  font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--field);margin:0 0 7px;
+}
+.features p{margin:0;font-size:16px;line-height:1.55}
+
+/* ---------- key/value table ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:460px;background:var(--paper)}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--field);background:var(--panel);border-bottom:1px solid var(--line);
+}
+td{font-size:15.5px;line-height:1.5}
+td:first-child{font-family:var(--mono);font-size:12.5px;white-space:nowrap;color:var(--ink)}
+tr:last-child td{border-bottom:0}
+
+/* ---------- pipeline diagram ---------- */
+.flow{
+  display:grid;gap:10px;margin:0 0 18px;padding:clamp(18px,3vw,26px);
+  border:1px solid var(--line);background:var(--panel);
+}
+.flow .step{
+  display:grid;grid-template-columns:26px minmax(0,1fr);gap:14px;align-items:start;
+}
+.flow .n{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--field);color:var(--paper);
+  font-family:var(--mono);font-size:11px;font-weight:700;
+}
+.flow .what{
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--field);margin:5px 0 3px;font-weight:500;
+}
+.flow .desc{font-size:15.5px;line-height:1.5;margin:0;color:var(--ink)}
+.flow .rule{height:14px;border-left:1px solid var(--line);margin-left:13px}
+
+/* ---------- callout ---------- */
+.note{
+  border-left:3px solid var(--gold);background:rgba(223,162,44,.1);
+  padding:15px 18px;margin:18px 0 0;font-size:16px;
+}
+.note b{
+  display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:6px;color:var(--field-deep);
+}
+
+/* ---------- math-ish block ---------- */
+.spec{
+  font-family:var(--mono);font-size:13px;line-height:1.75;
+  background:var(--panel);border:1px solid var(--line);
+  padding:16px 18px;margin:0 0 16px;overflow-x:auto;
+}
+.spec .k{color:var(--field);font-weight:700}
+
+/* ---------- cta ---------- */
+.cta{
+  display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:clamp(24px,4vw,34px);border:1px solid var(--field);background:var(--panel);
+  margin-top:clamp(30px,5vw,44px);
+}
+.cta p{margin:0;flex:1 1 260px;font-size:16px}
+.cta .launch{background:var(--field);color:var(--paper);padding:12px 22px}
+.cta .launch:hover{background:var(--field-deep)}
+
+footer{
+  border-top:1px solid var(--line);padding:30px 0 46px;margin-top:clamp(30px,5vw,48px);
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between;
+}
+footer a{text-decoration:none;border-bottom:1px solid var(--line)}
+footer a:hover{color:var(--field);border-color:var(--field)}
+
+@media (max-width:560px){body{font-size:16px}}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important}html{scroll-behavior:auto}}
+@media print{
+  .topbar{position:static}
+  section,.features li,.flow,.cta{break-inside:avoid}
+  .cta,.launch{display:none}
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="back" href="../index.html#baseball">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg>
+      Back to projects
+    </a>
+    <a class="launch" href="https://treychase.shinyapps.io/mlb_daily_report/" target="_blank" rel="noopener">
+      Launch the app
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+    </a>
+  </div>
+</div>
+
+<header class="hero wrap">
+  <p class="eyebrow">Baseball <span>/</span> Shiny dashboard <span>/</span> daily pipeline</p>
+  <h1>MLB Daily<br>Report</h1>
+  <p class="lede">
+    Every MLB game from the previous day, read the way a front office would want it:
+    box scores and standout performances up top, a player card one click away, and
+    three model-driven tabs underneath.
+  </p>
+  <ul class="meta">
+    <li class="on">Live</li>
+    <li>2025 to present</li>
+    <li>R &middot; Shiny &middot; bslib</li>
+    <li>baseballr</li>
+    <li>Hugging Face datasets</li>
+    <li>GitHub Actions</li>
+  </ul>
+</header>
+
+<main>
+
+<section class="wrap">
+  <h2>The daily report</h2>
+  <p class="sub">What loads on the front page</p>
+  <p>
+    The landing view covers the full slate from the previous day. Every game is
+    summarized from the MLB Stats API, alongside the individual performances worth
+    knowing about and month-to-date leaderboards that put the day in context.
+  </p>
+  <ul class="features">
+    <li>
+      <h4>Box and line scores</h4>
+      <p>Every game from the previous day, parsed from the MLB Stats API, with the line score alongside the full box.</p>
+    </li>
+    <li>
+      <h4>Top performances</h4>
+      <p>The day's standout hitting and pitching lines, surfaced rather than buried inside a game.</p>
+    </li>
+    <li>
+      <h4>Monthly leaderboards</h4>
+      <p>Month-to-date hitting leaders from Baseball Savant and pitching leaders from Baseball Reference, so a single game reads against a recent baseline.</p>
+    </li>
+    <li>
+      <h4>Standings</h4>
+      <p>Tidy per-team standings by division and league, and the entry point into a team's win-projection history.</p>
+    </li>
+  </ul>
+</section>
+
+<section class="wrap">
+  <h2>Player cards</h2>
+  <p class="sub">Click any name, anywhere in the app</p>
+  <p>
+    Names are click-through everywhere they appear — box scores, leaderboards, the
+    pitch run value table. The card that opens is precomputed rather than fetched
+    live, so it appears immediately.
+  </p>
+  <ul class="features">
+    <li>
+      <h4>Season card</h4>
+      <p>Bio, season line, Statcast percentile rankings, splits, and Wins Above Replacement.</p>
+    </li>
+    <li>
+      <h4>Pitch arsenal and Stuff+</h4>
+      <p>Pitch mix and usage with FanGraphs Stuff+ per pitch, for a read on what a pitcher actually throws.</p>
+    </li>
+    <li>
+      <h4>Movement profile</h4>
+      <p>Induced break and pitch movement per pitcher, plus arm angle and extension expressed as a league percentile and z-score.</p>
+    </li>
+    <li>
+      <h4>Batted ball and spray</h4>
+      <p>Batted-ball and bat-tracking data behind a spray chart, with ground ball, fly ball, and line drive rates.</p>
+    </li>
+    <li>
+      <h4>Sprint speed</h4>
+      <p>Placement against the league sprint-speed leaderboard.</p>
+    </li>
+  </ul>
+  <div class="note">
+    <b>On which WAR</b>
+    Leaderboards and cards report FanGraphs fWAR. Baseball Reference bWAR is used
+    only when FanGraphs is unavailable, and a lightweight estimate is the last
+    resort — the label on each card says which source it used, so the number is
+    never silently swapped.
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Pitch Run Value</h2>
+  <p class="sub">Ranking pitches, not pitchers</p>
+  <p>
+    Built from Baseball Savant's pitch-arsenal leaderboard, this tab carries one
+    row per pitcher <em>per pitch type</em>, so a reliever's slider is rated on its
+    own rather than folded into a season line. Dropdowns filter by team and pitch
+    type, and a minimum-pitches box sets the sample-size floor; the underlying
+    dataset is fetched at a loose minimum, so tightening the filter never triggers
+    a refetch.
+  </p>
+  <p>
+    Alongside total run value and RV/100 the table carries usage, the results the
+    pitch allowed — batting average, slugging, and wOBA — and its whiff, strikeout,
+    and hard-hit rates. Every column sorts, and clicking a row opens that pitcher's
+    card.
+  </p>
+  <div class="note">
+    <b>Sign convention</b>
+    Run value is signed from the pitcher's side, matching the raw Savant field and
+    the RV/100 percentile on the pitcher card: a <strong>positive</strong> figure
+    means the pitch saved runs. Rows sort descending, so the league's best pitches
+    sit at the top.
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Win Projections</h2>
+  <p class="sub">A recursive Bayesian filter, carried day to day</p>
+  <p>
+    Each team's latent per-game win probability is held as a Beta belief that is
+    updated once a day and carried forward, rather than refit from scratch.
+  </p>
+  <div class="spec">
+    <span class="k">Prior</span>      Beta(34, 34)  &mdash; mean .500, sd(&theta;) &asymp; .060<br>
+    <span class="k">Update</span>     carry yesterday's (&alpha;, &beta;) &rarr; apply forgetting factor &rarr; fold in the day's W/L<br>
+    <span class="k">Projection</span> final wins = wins banked + BetaBinomial(games remaining; &alpha;, &beta;)<br>
+    <span class="k">Interval</span>   90% credible, from the BetaBinomial quantiles
+  </div>
+  <p>
+    The prior's strength is tuned to the league's actual talent spread, so a 5-0
+    start is regressed toward average rather than extrapolated toward 162-0. The
+    forgetting factor lets recent form count for a little more than April without
+    discarding it.
+  </p>
+  <p>
+    Because the model runs inside the daily refresh and persists its state, the tab
+    reads a precomputed result and fits nothing on page load. It shows a per-team
+    chart of how a projection and its interval have moved across the season, and a
+    status badge that turns amber when the underlying dataset is stale and red when
+    it is missing — so a number on screen is never quietly out of date.
+  </p>
+</section>
+
+<section class="wrap">
+  <h2>Betting props</h2>
+  <p class="sub">Posterior-predictive pricing with matchup covariates</p>
+  <p>
+    A player's game log becomes a distribution for the <em>next</em> game, off which
+    over/under probabilities and vig-free fair odds are read.
+  </p>
+  <div class="spec">
+    <span class="k">Counts</span>   hits, home runs, total bases, strikeouts<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Gamma&ndash;Poisson &rarr; Negative-Binomial predictive<br>
+    <span class="k">Innings</span>  Normal&ndash;Inverse-Gamma (unknown mean and variance) &rarr; Student-t predictive<br>
+    <span class="k">Priors</span>   league-average, so a 3-for-6 start regresses rather than extrapolates<br>
+    <span class="k">Matchup</span>  multiplicative shift (&asymp; 1 is neutral) from opposing pitcher
+    and lineup, park factor, and platoon split
+  </div>
+  <p>
+    The matchup covariates are selectable, so a line can be read neutral or against
+    a specific opponent and park.
+  </p>
+</section>
+
+<section class="wrap">
+  <h2>How the data gets there</h2>
+  <p class="sub">Precomputed each morning, never fetched on page load</p>
+  <p>
+    Hitting the MLB, FanGraphs, and Savant endpoints on every page load would be
+    slow and fragile. Instead the slow datasets are rebuilt once a day, validated,
+    and published; the app reads those files and only falls back to a live request
+    when one is missing.
+  </p>
+  <div class="flow">
+    <div class="step">
+      <span class="n">1</span>
+      <div>
+        <p class="what">Scheduled job &middot; daily 08:00 ET</p>
+        <p class="desc">A GitHub Actions workflow runs the refresh script on a schedule.</p>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="step">
+      <span class="n">2</span>
+      <div>
+        <p class="what">Fetch and precompute</p>
+        <p class="desc">Schedule, box and line scores, standings, season leaderboards with fWAR, month-to-date leaders, and Stuff+ — plus a per-player dataset for every person appearing in the day's box scores and leaderboards, so a player card is instant.</p>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="step">
+      <span class="n">3</span>
+      <div>
+        <p class="what">Validate before publishing</p>
+        <p class="desc">Schema and content checks run over every dataset, so a malformed fetch never overwrites a good one.</p>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="step">
+      <span class="n">4</span>
+      <div>
+        <p class="what">Publish to a dataset repo</p>
+        <p class="desc">The validated files are uploaded to a Hugging Face dataset repository.</p>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="step">
+      <span class="n">5</span>
+      <div>
+        <p class="what">App reads, with a live fallback</p>
+        <p class="desc">The dashboard prefers a local copy, then the published one, validating again after loading. Anything corrupt or stale is ignored and the fetcher transparently falls back to a live request.</p>
+      </div>
+    </div>
+  </div>
+  <p>
+    The win-projection state is part of this: one row per team per day carrying the
+    Beta parameters and the projected wins, appended on each refresh. That is what
+    makes the filter genuinely recursive rather than a nightly recomputation.
+  </p>
+</section>
+
+<section class="wrap">
+  <h2>Data sources</h2>
+  <p class="sub">Four public feeds, each for what it is best at</p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Source</th><th scope="col">Used for</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>MLB Stats API</td><td>Schedule, box scores, line scores, standings, player season stats</td></tr>
+        <tr><td>Baseball Savant</td><td>Monthly hitting leaders, pitch movement, percentile rankings, per-pitch run value</td></tr>
+        <tr><td>Baseball Reference</td><td>Month-to-date pitching leaders, fallback bWAR</td></tr>
+        <tr><td>FanGraphs</td><td>fWAR as the primary WAR metric, Defensive Runs Saved, per-pitch Stuff+</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Engineering</h2>
+  <p class="sub">What keeps it running unattended</p>
+  <ul class="features">
+    <li>
+      <h4>Split fetchers</h4>
+      <p>Every fetcher is split into a live network call and a load-or-live wrapper, so the same code path serves both the refresh job and the app.</p>
+    </li>
+    <li>
+      <h4>Validation on both sides</h4>
+      <p>Datasets are validated before publishing and again after loading, so bad data fails closed instead of reaching the screen.</p>
+    </li>
+    <li>
+      <h4>Continuous integration</h4>
+      <p>The test suite sources every module, which doubles as a load check, and covers helpers, data processing, validation, the offline load-or-live wrappers, batted-ball logic, and smoke tests for the UI and plot builders.</p>
+    </li>
+    <li>
+      <h4>Automated deployment</h4>
+      <p>Pushes to main that touch the app or its modules redeploy to shinyapps.io automatically. Only the app code is bundled — datasets are read at runtime.</p>
+    </li>
+    <li>
+      <h4>Containerized</h4>
+      <p>A Dockerfile runs the whole dashboard locally on a single port for development or self-hosting.</p>
+    </li>
+  </ul>
+</section>
+
+<div class="wrap">
+  <div class="cta">
+    <p>The dashboard updates every morning and is open to anyone.</p>
+    <a class="launch" href="https://treychase.shinyapps.io/mlb_daily_report/" target="_blank" rel="noopener">
+      Launch the app
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+    </a>
+  </div>
+</div>
+
+</main>
+
+<footer class="wrap">
+  <span>Trey Chase &nbsp;&middot;&nbsp; Durham, North Carolina</span>
+  <span><a href="../index.html">Back to the site</a></span>
+</footer>
+
+</body>
+</html>

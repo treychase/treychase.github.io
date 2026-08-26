@@ -141,8 +141,17 @@ textarea.short{min-height:78px}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--field);outline-offset:-1px;border-color:var(--field)}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media (max-width:640px){.row{grid-template-columns:1fr}}
-.linkrow{display:grid;grid-template-columns:180px 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
+.linkrow{display:grid;grid-template-columns:170px 1fr auto auto;gap:8px;margin-bottom:8px;align-items:center}
 @media (max-width:640px){.linkrow{grid-template-columns:1fr}}
+.linkrow .star{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;white-space:nowrap;
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 11px;
+  transition:border-color .18s ease,color .18s ease,background .18s ease;
+}
+.linkrow .star:hover{border-color:var(--field);color:var(--field)}
+.linkrow .star input{margin:0;accent-color:var(--field)}
+.linkrow .star:has(input:checked){background:var(--field);border-color:var(--field);color:var(--paper)}
 
 .toggle{
   display:inline-flex;align-items:center;gap:12px;cursor:pointer;
@@ -771,6 +780,8 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
       return '<div class="linkrow">'
            + '<input type="text" class="mono" data-link-label="' + i + '" value="' + esc(l.label) + '" placeholder="View code">'
            + '<input type="text" class="mono" data-link-url="' + i + '" value="' + esc(l.url) + '" placeholder="https://  or  projects/report.html">'
+           + '<label class="star" title="Show this link as a filled button">'
+           +   '<input type="checkbox" data-link-primary="' + i + '"' + (l.primary ? ' checked' : '') + '>Button</label>'
            + '<button class="tiny danger" data-link-del="' + i + '">Remove</button></div>';
     }).join('');
     var files = (e.files || []).map(function (f, i) {
@@ -809,7 +820,8 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     + '<div class="field"><label>Links</label>' + links
     +   '<button class="tiny" id="link-add">Add link</button>'
     +   '<p class="help">A full URL for GitHub or anything external, or a path '
-    +   'inside this repo such as projects/report.html for a rendered notebook.</p></div>'
+    +   'inside this repo such as projects/report.html for a rendered notebook. '
+    +   'Tick Button to show one as a filled call to action.</p></div>'
     + '<div class="field"><label>Attached files</label>'
     +   '<ul class="filelist">' + files + '</ul>'
     +   '<label class="filebtn" for="f-files">' + (GH.on ? 'Upload files' : 'Choose files') + '</label>'
@@ -918,9 +930,17 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     e.body    = val('f-body').split(/\n\s*\n/).map(function (s) { return s.trim().replace(/\s*\n\s*/g, ' '); }).filter(Boolean);
     e.stack   = val('f-stack').trim();
     e.links   = (e.links || []).map(function (l, i) {
-      var lab = document.querySelector('[data-link-label="' + i + '"]');
-      var url = document.querySelector('[data-link-url="' + i + '"]');
-      return { label: lab ? lab.value.trim() : l.label, url: url ? url.value.trim() : l.url };
+      var lab  = document.querySelector('[data-link-label="' + i + '"]');
+      var url  = document.querySelector('[data-link-url="' + i + '"]');
+      var star = document.querySelector('[data-link-primary="' + i + '"]');
+      /* keep any keys the form does not know about rather than rebuilding
+         the object and dropping them */
+      var out = Object.assign({}, l, {
+        label: lab ? lab.value.trim() : l.label,
+        url:   url ? url.value.trim() : l.url
+      });
+      if (star) { if (star.checked) out.primary = true; else delete out.primary; }
+      return out;
     });
     dirty = true;
   }
