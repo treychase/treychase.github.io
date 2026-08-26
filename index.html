@@ -843,7 +843,13 @@ footer a:hover{color:var(--field);border-color:var(--field)}
       '<path d="M8 82h84"/>'
     + '<path d="M8 62h84" stroke-dasharray="3 5" opacity=".7"/>'
     + '<path d="M10 72 L26 54 L38 64 L52 26 L64 50 L78 40 L92 46"/>'
-    + '<circle cx="26" cy="54" r="3.5"/><circle cx="52" cy="26" r="3.5"/><circle cx="78" cy="40" r="3.5"/>'
+    + '<circle cx="26" cy="54" r="3.5"/><circle cx="52" cy="26" r="3.5"/><circle cx="78" cy="40" r="3.5"/>',
+    teaching:
+      '<rect x="8" y="16" width="84" height="60"/>'
+    + '<path d="M8 30h84"/>'
+    + '<path d="M22 41 32 51 22 61"/>'
+    + '<path d="M40 63h24"/>'
+    + '<path d="M50 76v10"/><path d="M34 86h32"/>'
   };
 
   var CATEGORIES = [
@@ -851,12 +857,14 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     { key: 'football',   name: 'Football',   blurb: 'Nothing yet',                    note: 'Positional and play-level work' },
     { key: 'basketball', name: 'Basketball', blurb: 'Projection, valuation',          note: 'Projection, valuation, and the data behind both' },
     { key: 'hockey',     name: 'Hockey',     blurb: 'Skater tracking',                note: 'Skating and positional tracking' },
-    { key: 'health',     name: 'Health',     blurb: 'Biomechanics, availability',     note: 'Biomechanics, availability, and the systems that keep the data honest' }
+    { key: 'health',     name: 'Health',     blurb: 'Biomechanics, availability',     note: 'Biomechanics, availability, and the systems that keep the data honest' },
+    { key: 'teaching',   name: 'Teaching',   blurb: 'Computing bootcamp',             note: 'Materials for the computing side of statistics work' }
   ];
 
   var LABELS = {
     baseball: 'Baseball', football: 'Football', basketball: 'Basketball',
-    hockey: 'Hockey', health: 'Health', articles: 'Article', blogs: 'Blog'
+    hockey: 'Hockey', health: 'Health', teaching: 'Teaching',
+    articles: 'Article', blogs: 'Blog'
   };
 
   var EMPTY = {
@@ -865,6 +873,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     basketball: ['Nothing on the board yet', 'Basketball work will be listed here as it is finished.'],
     hockey:     ['Nothing on the board yet', 'Hockey work will be listed here as it is finished.'],
     health:     ['Nothing here yet', 'Player health work will be listed here as it is finished.'],
+    teaching:   ['Nothing here yet', 'Teaching material and computing resources will be listed here as they are added.'],
     articles:   ['First piece is being written', 'Published articles will be listed here, most recent first. Until then, the project write-ups are the closest thing to a paper trail.'],
     blogs:      ['Nothing posted yet', 'Short posts on what broke, what the data actually looked like, and what changed the model will go here.']
   };

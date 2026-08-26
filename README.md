@@ -26,7 +26,12 @@ is written to disk or to local storage.
 `data/projects.js` with the file it gives you and commit that.
 
 Everything on the Projects, Articles and Blogs tabs comes from
-`data/projects.js`. The counts on the category squares are derived from it, so
+`data/projects.js`. An entry's `section` is one of `baseball`, `football`,
+`basketball`, `hockey`, `health`, `teaching`, `articles` or `blogs`; the first
+six are the category squares on the Projects tab, and each is deep-linkable by
+hash, so `index.html#teaching` opens that category directly. Adding a new
+category means adding it to `CATEGORIES`, `LABELS`, `EMPTY` and `SURFACES` in
+`index.html` and to `SECTIONS` in `admin.html`. The counts on the category squares are derived from it, so
 they never need updating by hand. The Resume tab is static markup in
 `index.html`.
 
@@ -121,9 +126,23 @@ projects/stuff-plus.html
 | --- | --- |
 | `Read the report` | `projects/stuff-plus.html` |
 
-`projects/mlb-daily-report.html` is a worked example: a full documentation page
-for the MLB Daily Report, styled to match the site, reached from the project
-card on both the front page and the Baseball tab.
+Three worked examples live in `projects/`, each a full documentation page styled
+to match the site and reached from its project card:
+
+| Page | Project |
+| --- | --- |
+| `projects/mlb-daily-report.html` | MLB Daily Report |
+| `projects/driveline-pitching.html` | OpenBiomechanics pitching dashboard |
+| `projects/computing-bootcamp.html` | DSS computing bootcamp |
+
+`projects/driveline-dashboard.html` is different: it is not a write-up but the
+rendered dashboard itself, a single self-contained file built by
+`dashboard_html.py` in the
+[driveline-pitching](https://github.com/treychase/driveline-pitching) repo and
+copied here, so the project page can link to something that loads immediately
+rather than waiting on a Hugging Face Space to wake up. Rebuild it with
+`python dashboard_html.py --out dashboard.html` and replace the file to refresh
+it. Its screenshots sit in `files/driveline/`.
 
 Tick **Button** on a link to render it as a filled call to action rather than a
 plain arrow link — useful for a "Launch the app" link that should stand out.
