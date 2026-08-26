@@ -199,17 +199,23 @@ window.SITE_DATA = {
     },
     {
       section: "basketball",
-      title: "Salary model and pricing tool",
+      title: "Finding undervalued NBA players",
       year: "2026",
-      tags: [],
-      status: "in-progress",
+      tags: ["Salary model"],
+      status: "",
       body: [
-        "A gradient-boosted model that prices a player's next contract from his production, tuned by grid search and cross validation, with counting stats normalized to a per-36 rate and minutes kept as its own feature. Conformalized quantile intervals turn a point estimate into a defensible price range.",
-        "The goal is to surface players a team can sign below what they are worth, so a clustering step adds shot-location and defensive archetypes as a predictor: stretch big against rim protector, three-and-D wing against point forward."
+        "Which players produce more than their contract pays for, and which of those could a team realistically sign? Basketball Reference per-game and advanced stats for 2025-26, joined to 2026-27 salaries, so last season's production is read against next season's pay: salary is set at signing, and regressing this year's pay on this year's production mostly recovers decisions made three offseasons ago. Counting stats are normalized to a per-36 rate, which splits the question in two, since minutes then carries role on its own and the rates carry productivity. Arithmetic identities and features correlated above 0.9 are pruned, leaving 28 across 370 players.",
+        "Gradient boosted trees on log salary, grid searched with five-fold cross validation: 0.58 R-squared on the log scale out of sample and a mean absolute error around 5.7 million dollars. That supports ranking and screening, not pricing an individual contract. Rookie scale is an explicit feature rather than a hidden confound, and every player is scored twice by the fold that held him out, once as himself and once as an open-market player, so surplus is measured against open-market pricing instead of blending two regimes. The median CBA discount on a rookie deal comes out around half a million dollars.",
+        "The market pays for volume and role, not efficiency: points, shots, and minutes correlate with pay between 0.6 and 0.75, while true shooting and the other rate statistics sit near zero. Two biases are structural rather than basketball, and the write-up is explicit about both: cheap players are predicted upward and expensive ones downward, and a tree ensemble cannot predict past the salary range it was trained on, so max-contract stars are forced into the overvalued tail no matter how they play. Filtering to players above the minimum band and off rookie scale leaves the twenty names a rival could actually pursue."
       ],
-      stack: "Python, XGBoost, scikit-learn, Jupyter",
-      links: [],
-      files: []
+      stack: "Python, XGBoost, scikit-learn, pandas, Jupyter",
+      links: [
+        { label: "Read the report", url: "files/finding-undervalued-nba-players.pdf", primary: true },
+        { label: "Read the notebook", url: "projects/nba-salary-model.html" }
+      ],
+      files: [
+        { name: "nba_salary_model.ipynb", path: "files/nba_salary_model.ipynb" }
+      ]
     },
     {
       section: "basketball",

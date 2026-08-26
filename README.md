@@ -180,6 +180,20 @@ repository smaller, at the cost of the report living at a different address.
 
 Notebooks work the same way: `jupyter nbconvert --to html --embed-images
 notebook.ipynb` produces a single file for `projects/`.
+`projects/nba-salary-model.html` is the worked example, with two edits made to
+the converted file:
+
+- **The MathJax script tag is deleted.** nbconvert loads MathJax from a CDN and
+  configures `$...$` as inline math, so a page discussing salaries renders
+  "under $10M with a thin tail running past $60M" as an italic equation. Nothing
+  in that notebook is LaTeX, so dropping the tag both fixes the text and leaves
+  the page genuinely self-contained. Keep it if a notebook actually uses math,
+  and escape the dollar signs instead.
+- **A bar back to the site is prepended** to `<body>`, since a converted
+  notebook is otherwise a dead end with no way back to the site.
+
+The nbconvert output also carries a mermaid loader, but it exits before
+requesting anything when the notebook has no mermaid diagrams, so it can stay.
 
 ## Publishing on GitHub Pages
 
