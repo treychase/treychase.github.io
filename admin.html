@@ -246,7 +246,7 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
   <h2>Publish straight to GitHub</h2>
   <div class="cols">
     <div><label for="gh-owner">Owner</label><input type="text" id="gh-owner" value="treychase" spellcheck="false"></div>
-    <div><label for="gh-repo">Repository</label><input type="text" id="gh-repo" value=".github.io" spellcheck="false"></div>
+    <div><label for="gh-repo">Repository</label><input type="text" id="gh-repo" value="treychase.github.io" spellcheck="false"></div>
     <div><label for="gh-branch">Branch</label><input type="text" id="gh-branch" value="main" spellcheck="false"></div>
     <div><label for="gh-token">Access token</label><input type="password" id="gh-token" placeholder="github_pat_..." spellcheck="false" autocomplete="off"></div>
   </div>
@@ -265,10 +265,10 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
   <div class="sitefiles">
     <h2>Site files</h2>
     <div class="row2">
-      <label class="filebtn" for="up-resume">Upload resume PDF</label>
-      <input type="file" id="up-resume" accept="application/pdf">
+      <label class="filebtn" for="up-resume">Upload resume</label>
+      <input type="file" id="up-resume" accept=".pdf,.docx,.doc,application/pdf">
       <button id="load-js">Load a projects.js</button>
-      <span class="note" style="margin:0">Resume is saved as files/trey_chase_resume.pdf. The headshot has its own tab in the top bar.</span>
+      <span class="note" style="margin:0">PDF or Word. Saved into files/ keeping its format, and the Resume tab's download button relabels itself to match. The headshot has its own tab in the top bar.</span>
     </div>
   </div>
 </div>
@@ -289,7 +289,7 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     ['hockey', 'Hockey'], ['health', 'Health'], ['articles', 'Articles'], ['blogs', 'Blogs']
   ];
   var DATA_PATH = 'data/projects.js';
-  var HS_FALLBACK = { src: 'files/headshot.jpg', zoom: 2, x: 55, y: 38 };
+  var HS_FALLBACK = { src: 'files/headshot.jpg', zoom: 2, x: 57.5, y: 39 };
 
   var SITE = window.SITE_DATA || {};
   var data = Array.isArray(SITE.entries) ? SITE.entries.slice() : [];
@@ -333,6 +333,11 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     h.x    = num(h.x, HS_FALLBACK.x);
     h.y    = num(h.y, HS_FALLBACK.y);
     return h;
+  }
+
+  function resume() {
+    if (!profile.resume) profile.resume = { src: '' };
+    return profile.resume;
   }
 
   var toastTimer;
@@ -960,20 +965,29 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     toast('Downloaded', 'Replace data/projects.js with it and commit.');
   });
 
-  /* site-wide files */
-  function wireSiteFile(inputId, target, label) {
-    document.getElementById(inputId).addEventListener('change', function () {
-      var file = this.files[0];
-      this.value = '';
-      if (!file) return;
-      if (!GH.on) { toast('Not connected', 'Connect first, or copy the file to ' + target + ' yourself.', true); return; }
-      toast('Uploading', label + '.');
-      uploadTo(target, file)
-        .then(function () { toast('Uploaded', label + ' is live once Pages rebuilds.'); })
-        .catch(function (err) { toast('Upload failed', err.message, true); });
-    });
-  }
-  wireSiteFile('up-resume', 'files/trey_chase_resume.pdf', 'Resume PDF');
+  /* Resume upload. The stored path keeps the file's own extension so a PDF
+     and a Word document can each be dropped in without renaming, and the
+     site's download button reads its label off that extension. */
+  document.getElementById('up-resume').addEventListener('change', function () {
+    var file = this.files[0];
+    this.value = '';
+    if (!file) return;
+
+    var ext = (file.name.match(/\.[a-z0-9]+$/i) || ['.pdf'])[0].toLowerCase();
+    var path = 'files/trey_chase_resume' + ext;
+    resume().src = path;
+    dirty = true;
+    draw();
+
+    if (!GH.on) {
+      toast('Recorded', 'Copy the file to ' + path + ' yourself, or connect to upload it.');
+      return;
+    }
+    toast('Uploading', 'Sending the resume to ' + path + '.');
+    uploadTo(path, file)
+      .then(function () { toast('Uploaded', 'Publish to save the link that points at it.'); })
+      .catch(function (err) { toast('Upload failed', err.message, true); });
+  });
 
   /* load a projects.js from disk */
   var loader = document.getElementById('jsloader');

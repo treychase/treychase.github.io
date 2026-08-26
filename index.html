@@ -508,7 +508,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
 
     <div class="resume-head">
       <h2 class="section">Resume</h2>
-      <a class="btn" href="files/trey_chase_resume.pdf" download>Download PDF</a>
+      <a class="btn" id="resume-dl" href="#" download hidden>Download</a>
     </div>
 
     <div class="res-block">
@@ -710,6 +710,23 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     img.onload = function () { img.hidden = false; };
     img.onerror = function () { img.remove(); };
     img.src = hs.src;
+  })();
+
+  /* ---------- resume download ----------
+     The button points at whatever file profile.resume names, and labels
+     itself from that file's extension, so replacing the .docx with a .pdf
+     needs no change here. With no file configured the button stays hidden
+     rather than offering a download that 404s. */
+  (function () {
+    var a = document.getElementById('resume-dl');
+    if (!a) return;
+    var src = String((PROFILE.resume && PROFILE.resume.src) || '').trim();
+    if (!src) { a.remove(); return; }
+    var ext = (src.split('.').pop() || '').toLowerCase();
+    var LABEL = { pdf: 'Download PDF', docx: 'Download DOCX', doc: 'Download DOC' };
+    a.textContent = LABEL[ext] || 'Download resume';
+    a.href = src;
+    a.hidden = false;
   })();
 
   /* Each square carries a line drawing of its own playing surface.
