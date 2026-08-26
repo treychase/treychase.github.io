@@ -156,20 +156,31 @@ to match the site and reached from its project card:
 | `projects/driveline-pitching.html` | OpenBiomechanics pitching dashboard |
 | `projects/driveline-hitting.html` | Driveline hitting dashboard |
 
-## The two hosted dashboards
+## The hosted dashboards
 
-Two files in `projects/` are not write-ups but the rendered dashboards
-themselves, each a single self-contained page built in its own repository and
-copied here, so a project card can link to something that loads immediately
-rather than waiting on a Space to wake up:
+Three files in `projects/` are not write-ups but the dashboards themselves,
+each a single self-contained page, so a project card can link to something that
+loads immediately rather than waiting on a Space to wake up:
 
 | File | Built by | Rebuild with |
 | --- | --- | --- |
 | `projects/driveline-dashboard.html` | [driveline-pitching](https://github.com/treychase/driveline-pitching) | `python dashboard_html.py --out dashboard.html` |
 | `projects/driveline-hitting-dashboard.html` | [driveline-hitting](https://github.com/treychase/driveline-hitting) | `save_dashboard(swing_dashboard(...))`, see that repo's README |
+| `projects/skater-tracking-dashboard.html` | `tools/` in this repo, from the [avs_take_home](https://github.com/treychase/avs_take_home) tracking data | `python tools/build_skater_dashboard.py --games-dir ../avs_take_home/games` |
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
+
+The skater replay is the one built here rather than copied in. `tools/` holds
+the two halves: `build_skater_dashboard.py` reads one period out of the
+`games/*.parquet` files in the analysis repo and writes the positions into
+`skater_dashboard_template.html`, which draws the rink on a canvas and replays
+them. The rink geometry and palette are copied from `viz_functions.py` in that
+repo, so the web rink and the matplotlib one are the same rink; the positions
+are embedded as integers in tenths of a foot, the resolution the feed carries,
+which is what keeps a whole twenty-minute period under a megabyte and a half.
+The generator belongs with its data and can move into the analysis repo
+whenever that repo is the one being edited.
 
 Both copies carry two things appended at the bottom of the file: the footer
 described under *Copyright* below, and a short script that starts the animation

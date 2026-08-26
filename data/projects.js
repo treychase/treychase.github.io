@@ -295,17 +295,20 @@ window.SITE_DATA = {
     {
       section: "hockey",
       title: "What makes a good skater",
-      summary: "Ninety thousand tracking timestamps reduced to a scout's question: who skates well, and how would you know from coordinates alone?",
+      summary: "Seven games of tracking data reduced to a scout's question: who skates well, and how would you know from coordinates alone?",
       pinned: true,
       year: "2026",
       tags: ["Tracking data"],
       status: "",
       body: [
-        "Seven games of positional tracking data, roughly ninety thousand timestamps and one hundred twenty skaters, reduced to a question a scout would ask: who skates well, and how would you know from coordinates alone?",
-        "The pipeline downsamples every feed to whole-second frames so that speed, acceleration, and change of direction are all measured against the same one-second interval, then screens outliers before any player is ranked. A rink view plots all skaters and the puck for a chosen game and period, with a time slider to step through a shift."
+        "Seven games of positional tracking at twenty-five frames a second, roughly ninety thousand timestamps and one hundred twenty skaters, reduced to a question a scout would ask: who skates well, and how would you know from coordinates alone?",
+        "Everything is measured in seconds against the feed's own clock rather than bucketed into whole seconds. Speed is a displacement over a one-second baseline, deliberately: the tracked positions are rounded to a tenth of a foot, and over a single frame that rounding alone is worth about 2.5 ft/s, enough to pin every skater to the 40 ft/s ceiling and rank nobody. Outliers are screened before anyone reaches a leaderboard, and shifts and line changes are read off the same feed.",
+        "A replay puts the period back in motion: every skater and the puck moving across the rink at the speed it happened, with a scrub bar, playback speed, trails, and velocity arrows measured over that same one-second baseline. It draws to a canvas with the positions embedded, so it opens with nothing to install and nothing to fetch."
       ],
       stack: "Python, pyarrow, pandas, matplotlib",
-      links: [],
+      links: [
+        { label: "Watch the replay", url: "projects/skater-tracking-dashboard.html", primary: true }
+      ],
       files: []
     },
 
