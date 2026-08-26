@@ -129,30 +129,19 @@ window.SITE_DATA = {
     },
     {
       section: "baseball",
-      title: "Expected outcomes model, Duke Baseball",
-      summary: "Expected outcome models and run value calculators, delivered to a new coaching staff through Shiny dashboards.",
+      title: "Expected outcomes and run values, Duke Baseball",
+      summary: "Expected outcome models, a run value matrix, and the dashboards a new coaching staff reads them in.",
       year: "2024 to 2026",
       tags: ["Head of Data Analytics"],
       status: "",
       body: [
-        "Gradient-boosted expected outcome models paired with run value calculators, delivered to a new coaching staff through Shiny dashboards with spray charts and strength and conditioning views. Also taught undergraduate staff the R and statistics needed to keep it running."
+        "Gradient-boosted expected outcome models paired with run value calculators, delivered to a new coaching staff through Shiny dashboards with spray charts and strength and conditioning views. Also taught the undergraduate staff the R and statistics needed to keep it running.",
+        "The run value matrix underneath the calculators is published here: what every outcome is worth in runs, given the count, the number of outs, and which bases are occupied. It is the table the apps price events against, and it is the only part that leaves the program. The dashboards, their code, and anything that could identify a player stay inside it."
       ],
       stack: "R, XGBoost, Shiny",
-      links: [],
-      files: []
-    },
-    {
-      section: "baseball",
-      title: "Cumulative OPS trajectories",
-      summary: "Raw Statcast pitch events turned into a season-to-date OPS series for every regular hitter, one row per day.",
-      year: "2026",
-      tags: [],
-      status: "in-progress",
-      body: [
-        "A Statcast pull that turns raw pitch events into a season-to-date OPS series for every hitter averaging at least two at bats per game, one row per player per day. Built as the input layer for time series models of how a hitter's season actually unfolds."
+      links: [
+        { label: "Open the run value matrix", url: "projects/run-value-matrix.html", primary: true }
       ],
-      stack: "Python, pybaseball, pandas",
-      links: [],
       files: []
     },
     {
@@ -234,62 +223,6 @@ window.SITE_DATA = {
         { name: "nba_salary_model.ipynb", path: "files/nba_salary_model.ipynb" }
       ]
     },
-    {
-      section: "basketball",
-      title: "Positional scarcity and replacement level",
-      summary: "What a roster spot is worth depends on how deep the league is at that position. This prices production against that.",
-      year: "2026",
-      tags: [],
-      status: "in-progress",
-      body: [
-        "What a roster spot is actually worth depends on how deep the league is at that position. This project sets a replacement baseline by position and prices production against it, so a front office can compare offers across positions on one scale."
-      ],
-      stack: "Python, pandas",
-      links: [],
-      files: []
-    },
-    {
-      section: "basketball",
-      title: "NBA data warehouse, 2000 to present",
-      summary: "Every season since 2000-01 in one table, box score through player tracking, feeding the rest of the basketball work.",
-      year: "2026",
-      tags: ["Infrastructure"],
-      status: "",
-      body: [
-        "A scraper that pulls every season since 2000-01 into a single combined table: base box score and advanced production, plus all player tracking categories, drives, defense, catch and shoot, passing, pull-up, rebounding, speed and distance, and elbow, post, and paint touches. It is the shared foundation the shooting, salary, and valuation projects all read from."
-      ],
-      stack: "Python, nba_api, pandas",
-      links: [],
-      files: []
-    },
-    {
-      section: "basketball",
-      title: "Player projection system",
-      summary: "DARKO-style projections: aging curves and prior-informed updates applied to per-possession production.",
-      year: "2025",
-      tags: ["Personal project"],
-      status: "",
-      body: [
-        "A player projection system following DARKO methodology, aging curves and prior-informed updates applied to per-possession production."
-      ],
-      stack: "Python",
-      links: [],
-      files: []
-    },
-    {
-      section: "basketball",
-      title: "Shot quality grade",
-      summary: "Grading a shot on shooter efficiency and tracking context rather than on whether it went in. Shelved over data resolution.",
-      year: "2026",
-      tags: [],
-      status: "shelved",
-      body: [
-        "A grading metric that scores a shot on shooter efficiency plus tracking context rather than outcome alone. Shelved after the public tracking feeds turned out to be aggregated by season instead of by possession, which is not enough resolution for the version worth building."
-      ],
-      stack: "Python, nba_api",
-      links: [],
-      files: []
-    },
 
     /* ---------------- HOCKEY ---------------- */
     {
@@ -315,34 +248,6 @@ window.SITE_DATA = {
     /* ---------------- HEALTH ---------------- */
     {
       section: "health",
-      title: "Compliance dashboards, NBA",
-      summary: "The league's first compliance dashboards for a new large-scale assessment program, audit trail included.",
-      year: "2025 to 2026",
-      tags: ["Data Analyst"],
-      status: "",
-      body: [
-        "The league's first compliance dashboards for a new large-scale assessment program, covering assessment window logic, team-level completion views, edit tracking, and a full audit trail so any number on screen can be traced back to who changed it and when."
-      ],
-      stack: "Python, Streamlit, Snowflake, Polars",
-      links: [],
-      files: []
-    },
-    {
-      section: "health",
-      title: "Sensor data pipeline",
-      summary: "An end-to-end automated pipeline for high-volume sensor and operational data, replacing manual processing.",
-      year: "2025 to 2026",
-      tags: ["Data Analyst"],
-      status: "",
-      body: [
-        "An end-to-end automated pipeline for high-volume sensor and operational data, built with data engineering, replacing manual processing and feeding the longitudinal views that analysts use to spot trends across seasons."
-      ],
-      stack: "Python, SQL, Snowflake",
-      links: [],
-      files: []
-    },
-    {
-      section: "health",
       title: "Projecting peak velocity from biomechanics",
       summary: "Which of these arms throws hardest in five years? Peak velocity projected from delivery mechanics, with the uncertainty kept.",
       year: "2025",
@@ -357,20 +262,6 @@ window.SITE_DATA = {
       links: [
         { label: "Read the notebook", url: "projects/velocity-projection.html", primary: true }
       ],
-      files: []
-    },
-    {
-      section: "health",
-      title: "Survival analysis for availability",
-      summary: "Time-to-event methods for the question of who is available, and for how long.",
-      year: "2025",
-      tags: ["Graduate coursework"],
-      status: "",
-      body: [
-        "Time-to-event methods applied to questions of who is available and for how long, including multilevel and mixed-effects models for repeated measures on the same athlete."
-      ],
-      stack: "R, survival, tidyverse",
-      links: [],
       files: []
     }
 
