@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Run Value Matrix &middot; Trey Chase</title>
+<meta name="description" content="The run value of every outcome by count, outs and base state, as a diverging heatmap.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#ECEFE6;--panel:#E3E7DB;--ink:#14201B;--muted:#4B5A52;
+  --field:#1F5C43;--field-deep:#153F2E;--gold:#DFA22C;
+  --line:rgba(20,32,27,.16);--line-soft:rgba(20,32,27,.08);
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Helvetica Neue",Arial,sans-serif;
+  /* diverging pair: cool for runs saved, warm for runs added, neutral middle.
+     Blue and red rather than the site's green, because green and red is the
+     one diverging pair a red-green colourblind reader cannot separate. */
+  --cool:#2166AC;--warm:#B2182B;--mid:#F3F1EC;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
+.bar{
+  position:sticky;top:0;z-index:20;background:var(--field);
+  border-bottom:1px solid var(--field-deep);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 22px;font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.bar a{color:rgba(236,239,230,.75);text-decoration:none}
+.bar a:hover{color:var(--paper)}
+.bar .who{color:var(--paper);font-weight:500}
+main{max-width:1120px;margin:0 auto;padding:22px}
+h1{font-size:clamp(1.3rem,3vw,1.9rem);font-weight:800;letter-spacing:-.02em;
+   margin:0 0 6px;text-transform:uppercase}
+.sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+     color:var(--muted);margin:0 0 18px}
+p.intro{font-size:16px;line-height:1.6;max-width:70ch;margin:0 0 18px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:6px}
+.controls label{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+                text-transform:uppercase;color:var(--muted)}
+select{
+  font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:999px;
+  border:1px solid var(--line);background:var(--paper);color:var(--ink);
+}
+.outs{display:inline-flex;gap:6px}
+.outs button{
+  appearance:none;cursor:pointer;font-family:var(--mono);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;padding:8px 14px;border-radius:999px;
+  border:1px solid var(--line);background:var(--paper);color:var(--ink);
+}
+.outs button:hover{border-color:var(--field);color:var(--field)}
+.outs button.on{background:var(--field);border-color:var(--field);color:var(--paper)}
+.outs button.on:hover{background:var(--field-deep);border-color:var(--field-deep);color:var(--paper)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);margin-top:16px;background:var(--paper)}
+table{border-collapse:separate;border-spacing:2px;width:100%;min-width:620px}
+th,td{padding:0}
+thead th{
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--field);padding:10px 6px;white-space:nowrap;
+}
+tbody th{
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink);
+  padding:0 10px;text-align:right;white-space:nowrap;
+}
+td.cell{
+  font-family:var(--mono);font-size:12px;text-align:center;height:34px;
+  border-radius:3px;cursor:default;
+}
+td.cell.empty{background:transparent;color:var(--muted)}
+.legend{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap;
+        font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.ramp{height:12px;width:min(320px,60vw);border:1px solid var(--line);border-radius:2px}
+.tip{
+  position:fixed;pointer-events:none;opacity:0;transition:opacity .12s ease;
+  background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;
+  padding:7px 10px;border-radius:4px;z-index:50;line-height:1.5;white-space:nowrap;
+}
+.note{
+  border-left:3px solid var(--gold);background:rgba(223,162,44,.1);
+  padding:14px 16px;margin:22px 0 0;font-size:15px;line-height:1.55;max-width:70ch;
+}
+.note b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:6px;color:var(--field-deep)}
+footer{
+  border-top:1px solid var(--line);margin-top:40px;padding:24px 22px 40px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between;
+}
+footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a href="../index.html#baseball">&#8249;&nbsp;&nbsp;Back to projects</a>
+  <span class="who">Run value matrix</span>
+</div>
+
+<main>
+  <h1>Run value matrix</h1>
+  <p class="sub" id="sub">Runs added per event</p>
+
+  <p class="intro">
+    What every outcome is worth, in runs, given the situation it happened in. A
+    called strike costs the hitter almost nothing on 0&#8209;0 and a great deal on
+    3&#8209;2; a walk is worth more with the bases loaded than with the bases empty.
+    This is the table underneath that: run value by count, by outs, and by which
+    bases are occupied. Positive is runs added for the batting team.
+  </p>
+
+  <div class="controls">
+    <label for="cat">Outcome</label>
+    <select id="cat"></select>
+    <label for="outs">Outs</label>
+    <span class="outs" id="outs">
+      <button data-outs="0" class="on">0</button>
+      <button data-outs="1">1</button>
+      <button data-outs="2">2</button>
+    </span>
+  </div>
+
+  <div class="tablewrap"><table id="grid"><thead></thead><tbody></tbody></table></div>
+
+  <div class="legend">
+    <span id="lo">&mdash;</span>
+    <span class="ramp" id="ramp"></span>
+    <span id="hi">&mdash;</span>
+    <span>&middot;&nbsp;&nbsp;runs added for the batting team</span>
+  </div>
+
+  <div class="note">
+    <b>Reading it</b>
+    The numbers are the encoding; the colour only sorts them at a glance, which is
+    why the scale is blue to red rather than the site's green &mdash; green against
+    red is the one pair a red&#8209;green colourblind reader cannot separate. Balls
+    and strikes are broken out by count, since that is where the count matters;
+    every other outcome ends the plate appearance, so it carries one row.
+  </div>
+</main>
+
+<div class="tip" id="tip"></div>
+
+<footer>
+  <span>&copy; 2026 Trey Chase</span>
+  <span><a href="../index.html">Back to the site</a></span>
+</footer>
+
+<script>
+(function () {
+  var D = {"bases":["Empty","1st","2nd","3rd","1st&2nd","1st&3rd","2nd&3rd","Loaded"],"counts":["0-0","0-1","0-2","1-0","1-1","1-2","2-0","2-1","2-2","3-0","3-1","3-2","All"],"categories":["Ball","Strike","Double","Error","FieldersChoice","HitByPitch","HomeRun","Out","Sacrifice","Single","Strikeout","Triple","Walk"],"cells":{"Ball":{"0":{"0-0":[0.057,0.086,0.074,0.116,0.105,0.08,0.078,0.153],"0-1":[0.064,0.094,0.092,0.147,0.094,0.091,0.004,0.123],"0-2":[0.112,0.156,0.068,0.214,0.175,0.261,0.128,0.144],"1-0":[0.098,0.14,0.101,-0.005,0.222,0.213,0.168,0.207],"1-1":[0.071,0.137,0.154,0.047,0.2,0.096,0.071,0.177],"1-2":[0.101,0.151,0.202,0.193,0.229,0.054,0.148,0.304],"2-0":[0.044,0.036,-0.015,0.054,-0.002,0.046,0.055,0.049],"2-1":[0.051,0.047,-0.033,0.054,0.123,0.056,0.138,0.205],"2-2":[0.088,0.11,0.12,0.033,0.162,0.283,0.185,0.214],"3-0":[-0.111,null,-0.161,-0.154,null,null,null,null],"3-1":[-0.171,-0.29,-0.248,-0.32,null,null,null,null],"3-2":[-0.04,-0.124,-0.042,-0.094,-0.062,null,null,null]},"1":{"0-0":[0.043,0.051,0.055,0.055,0.073,0.052,0.079,0.071],"0-1":[0.048,0.059,0.066,0.063,0.084,0.095,0.076,0.094],"0-2":[0.072,0.101,0.102,0.079,0.162,0.178,0.167,0.241],"1-0":[0.068,0.083,0.089,0.04,0.121,0.109,0.084,0.181],"1-1":[0.061,0.094,0.1,0.031,0.109,0.139,0.108,0.19],"1-2":[0.072,0.137,0.133,0.155,0.159,0.205,0.148,0.212],"2-0":[0.023,0.026,-0.026,0.046,0.048,-0.011,-0.047,0.108],"2-1":[0.026,0.042,0.007,0.038,0.089,0.023,0.053,0.047],"2-2":[0.061,0.085,0.123,0.104,0.146,0.241,0.194,0.214],"3-0":[-0.156,null,-0.104,-0.192,-0.335,null,null,null],"3-1":[-0.179,null,-0.103,-0.18,null,null,null,null],"3-2":[-0.038,-0.04,-0.04,-0.052,-0.093,null,null,null]},"2":{"0-0":[0.02,0.035,0.035,0.037,0.067,0.056,0.051,0.116],"0-1":[0.021,0.046,0.037,0.033,0.062,0.04,0.06,0.12],"0-2":[0.038,0.064,0.085,0.074,0.098,0.152,0.117,0.177],"1-0":[0.026,0.051,0.05,0.039,0.083,0.067,0.103,0.177],"1-1":[0.023,0.054,0.042,0.058,0.091,0.073,0.077,0.186],"1-2":[0.038,0.076,0.076,0.085,0.114,0.138,0.144,0.215],"2-0":[0.011,0.018,-0.011,0.02,-0.025,0.035,-0.014,0.068],"2-1":[0.019,0.027,0.007,0.037,0.035,0.085,0.062,0.085],"2-2":[0.031,0.066,0.072,0.11,0.136,0.163,0.13,0.243],"3-0":[-0.021,-0.183,-0.091,-0.08,null,null,-0.264,null],"3-1":[null,-0.327,-0.087,-0.109,null,null,null,null],"3-2":[-0.029,null,-0.009,-0.041,null,null,null,null]}},"Double":{"0":{"All":[0.745,1.176,0.974,0.686,1.416,1.251,0.953,1.381]},"1":{"All":[0.526,1.008,0.977,0.739,1.497,1.218,1.215,1.678]},"2":{"All":[0.26,0.764,1.003,0.951,1.529,1.344,1.696,2.092]}},"Error":{"0":{"All":[0.549,0.792,0.648,0.501,1.009,0.785,0.675,0.877]},"1":{"All":[0.367,0.578,0.608,0.583,0.925,0.775,0.882,1.022]},"2":{"All":[0.187,0.376,0.614,0.86,0.832,0.985,1.331,1.41]}},"FieldersChoice":{"0":{"All":[null,-0.392,-0.369,-0.598,-0.482,-0.392,-0.533,-0.609]},"1":{"All":[null,-0.302,-0.371,-0.36,-0.372,-0.157,-0.387,-0.346]},"2":{"All":[null,-0.302,-0.259,0.082,-0.551,-0.577,0.02,-0.888]}},"HitByPitch":{"0":{"All":[0.517,0.741,0.501,0.388,1.004,0.823,0.488,0.947]},"1":{"All":[0.346,0.52,0.338,0.3,0.838,0.607,0.394,1.003]},"2":{"All":[0.171,0.294,0.201,0.233,0.451,0.369,0.321,1.006]}},"HomeRun":{"0":{"All":[0.997,1.455,1.246,0.928,1.708,1.56,1.221,1.712]},"1":{"All":[0.994,1.627,1.458,1.208,2.142,1.84,1.714,2.348]},"2":{"All":[1.001,1.816,1.737,1.695,2.538,2.378,2.43,3.127]}},"Out":{"0":{"All":[-0.371,-0.633,-0.471,-0.57,-0.794,-0.75,-0.663,-1.091]},"1":{"All":[-0.232,-0.461,-0.471,-0.387,-0.725,-0.836,-0.533,-1.246]},"2":{"All":[-0.162,-0.321,-0.409,-0.466,-0.59,-0.671,-0.709,-1.009]}},"Sacrifice":{"0":{"All":[null,-0.294,-0.243,-0.433,-0.172,-0.384,-0.447,-0.595]},"1":{"All":[null,-0.258,-0.381,-0.006,-0.451,-0.068,-0.195,-0.374]},"2":{"All":[null,0.137,0.098,0.674,0.264,0.655,0.727,0.646]}},"Single":{"0":{"All":[0.516,0.765,0.686,0.432,0.997,0.817,0.658,0.913]},"1":{"All":[0.345,0.58,0.674,0.548,0.958,0.807,0.899,1.099]},"2":{"All":[0.17,0.32,0.747,0.859,0.901,0.928,1.44,1.433]}},"Strike":{"0":{"0-0":[-0.072,-0.097,-0.097,-0.082,-0.117,-0.082,-0.051,-0.165],"0-1":[-0.047,-0.031,-0.013,-0.072,-0.036,-0.097,-0.107,-0.005],"0-2":[0.07,0.1,0.08,0.14,0.126,0.12,0.085,0.138],"1-0":[-0.086,-0.127,-0.098,-0.068,-0.171,-0.091,-0.105,-0.254],"1-1":[-0.065,-0.058,-0.108,-0.131,-0.067,-0.064,-0.056,-0.116],"1-2":[0.055,0.075,0.1,0.092,0.112,0.064,0.088,0.159],"2-0":[-0.145,-0.191,-0.093,-0.024,-0.29,-0.273,-0.258,-0.379],"2-1":[-0.108,-0.141,-0.198,-0.11,-0.193,-0.178,-0.075,-0.163],"2-2":[0.028,0.025,0.037,0.006,0.054,0.082,0.061,0.066],"3-0":[-0.302,-0.371,-0.22,-0.108,-0.502,-0.489,-0.443,-0.551],"3-1":[-0.244,-0.298,-0.232,-0.313,-0.536,-0.23,-0.262,-0.59],"3-2":[-0.069,-0.146,-0.056,-0.08,-0.087,-0.179,-0.113,-0.205]},"1":{"0-0":[-0.048,-0.075,-0.078,-0.069,-0.119,-0.125,-0.147,-0.156],"0-1":[-0.022,-0.038,-0.043,-0.06,-0.05,-0.09,-0.066,-0.086],"0-2":[0.047,0.074,0.071,0.067,0.1,0.122,0.105,0.164],"1-0":[-0.059,-0.093,-0.083,-0.062,-0.136,-0.112,-0.18,-0.155],"1-1":[-0.044,-0.066,-0.078,-0.116,-0.06,-0.144,-0.081,-0.098],"1-2":[0.038,0.069,0.073,0.076,0.081,0.11,0.083,0.115],"2-0":[-0.091,-0.12,-0.103,-0.089,-0.196,-0.14,-0.212,-0.21],"2-1":[-0.085,-0.106,-0.147,-0.086,-0.116,-0.253,-0.162,-0.226],"2-2":[0.017,0.021,0.04,0.033,0.05,0.08,0.073,0.065],"3-0":[-0.187,-0.232,-0.17,-0.24,-0.366,-0.233,-0.274,-0.524],"3-1":[-0.178,-0.241,-0.19,-0.176,-0.288,-0.323,-0.247,-0.359],"3-2":[-0.063,-0.089,-0.053,-0.07,-0.071,-0.103,-0.019,-0.144]},"2":{"0-0":[-0.026,-0.058,-0.052,-0.06,-0.09,-0.07,-0.115,-0.178],"0-1":[-0.015,-0.019,-0.055,-0.05,-0.034,-0.077,-0.067,-0.035],"0-2":[0.024,0.044,0.051,0.04,0.073,0.087,0.076,0.127],"1-0":[-0.032,-0.066,-0.058,-0.069,-0.123,-0.109,-0.114,-0.212],"1-1":[-0.023,-0.042,-0.064,-0.054,-0.073,-0.066,-0.088,-0.107],"1-2":[0.02,0.042,0.046,0.047,0.072,0.077,0.069,0.116],"2-0":[-0.047,-0.087,-0.085,-0.065,-0.155,-0.137,-0.179,-0.267],"2-1":[-0.033,-0.075,-0.086,-0.088,-0.149,-0.105,-0.102,-0.25],"2-2":[0.009,0.021,0.029,0.039,0.052,0.063,0.044,0.084],"3-0":[-0.081,-0.166,-0.141,-0.114,-0.194,-0.251,-0.261,-0.565],"3-1":[-0.078,-0.144,-0.121,-0.146,-0.238,-0.195,-0.208,-0.46],"3-2":[-0.03,-0.042,-0.007,-0.007,-0.037,-0.007,-0.014,-0.117]}},"Strikeout":{"0":{"All":[-0.366,-0.544,-0.573,-0.645,-0.753,-0.687,-0.815,-0.949]},"1":{"All":[-0.229,-0.406,-0.489,-0.681,-0.609,-0.759,-0.902,-0.986]},"2":{"All":[-0.16,-0.314,-0.404,-0.462,-0.581,-0.661,-0.707,-0.988]}},"Triple":{"0":{"All":[1.011,1.477,1.241,0.967,1.7,1.597,1.18,1.774]},"1":{"All":[0.776,1.37,1.244,0.995,1.899,1.697,1.455,2.122]},"2":{"All":[0.323,1.14,1.079,1.025,1.902,1.718,1.781,2.457]}},"Walk":{"0":{"All":[0.517,0.744,0.515,0.384,0.995,0.822,0.49,0.978]},"1":{"All":[0.342,0.523,0.351,0.309,0.842,0.611,0.406,1.005]},"2":{"All":[0.171,0.296,0.209,0.25,0.453,0.378,0.337,1.026]}}},"min":-1.246,"max":3.127,"n":797};
+  var cat = D.categories[0], outs = "0";
+  /* The colour scale is set from the view on screen, not from the whole table.
+     A home run with the bases loaded is worth 3.1 runs and a ball on 0-0 is
+     worth 0.06; on one shared scale every ball and strike washes out to the
+     same pale cell. The numbers are printed either way, and the legend says
+     which range the colours currently mean. */
+  var lim = 1;
+
+  /* diverging: two hues to a neutral middle, never a hue at the midpoint */
+  function mix(a, b, t) {
+    return 'rgb(' + a.map(function (v, i) { return Math.round(v + (b[i] - v) * t); }).join(',') + ')';
+  }
+  var COOL = [33, 102, 172], MID = [243, 241, 236], WARM = [178, 24, 43];
+  function color(v) {
+    if (v === null) return 'transparent';
+    var t = Math.min(1, Math.abs(v) / lim);
+    t = Math.pow(t, 0.7);                       // spread the middle, where most cells sit
+    return v < 0 ? mix(MID, COOL, t) : mix(MID, WARM, t);
+  }
+  function ink(v) {
+    return v !== null && Math.pow(Math.min(1, Math.abs(v) / lim), 0.7) > 0.55
+      ? '#fff' : 'var(--ink)';
+  }
+
+  var sel = document.getElementById('cat');
+  sel.innerHTML = D.categories.map(function (c) {
+    return '<option value="' + c + '">' + c.replace(/([a-z])([A-Z])/g, '$1 $2') + '</option>';
+  }).join('');
+
+  var tip = document.getElementById('tip');
+  function showTip(ev, text) {
+    tip.textContent = text; tip.style.opacity = '1';
+    tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 12, ev.clientX + 14) + 'px';
+    tip.style.top = (ev.clientY + 16) + 'px';
+  }
+  function hideTip() { tip.style.opacity = '0'; }
+
+  function draw() {
+    var block = (D.cells[cat] || {})[outs] || {};
+    var counts = D.counts.filter(function (c) { return block[c]; });
+    var shown = [];
+    counts.forEach(function (c) {
+      block[c].forEach(function (v) { if (v !== null) shown.push(Math.abs(v)); });
+    });
+    lim = shown.length ? Math.max.apply(null, shown) : 1;
+    paintLegend();
+    var head = '<tr><th></th>' + D.bases.map(function (b) {
+      return '<th scope="col">' + b + '</th>';
+    }).join('') + '</tr>';
+    var body = counts.map(function (c) {
+      var row = block[c];
+      return '<tr><th scope="row">' + (c === 'All' ? 'Any count' : c) + '</th>'
+        + row.map(function (v, i) {
+            if (v === null) return '<td class="cell empty">&mdash;</td>';
+            return '<td class="cell" style="background:' + color(v) + ';color:' + ink(v) + '"'
+              + ' data-tip="' + (c === 'All' ? 'Any count' : c) + ' count, ' + outs
+              + (outs === '1' ? ' out' : ' outs') + ', ' + D.bases[i] + ' — ' + v.toFixed(3) + ' runs">'
+              + v.toFixed(3) + '</td>';
+          }).join('')
+        + '</tr>';
+    }).join('');
+    document.querySelector('#grid thead').innerHTML = head;
+    document.querySelector('#grid tbody').innerHTML = body
+      || '<tr><td class="cell empty" colspan="9">No rows for this outcome at ' + outs + ' outs.</td></tr>';
+    document.getElementById('sub').textContent =
+      cat.replace(/([a-z])([A-Z])/g, '$1 $2') + ' · ' + outs + (outs === '1' ? ' out' : ' outs')
+      + ' · ' + counts.length + (counts.length === 1 ? ' row' : ' rows');
+  }
+
+  document.getElementById('grid').addEventListener('mousemove', function (ev) {
+    var td = ev.target.closest('td[data-tip]');
+    if (td) showTip(ev, td.dataset.tip); else hideTip();
+  });
+  document.getElementById('grid').addEventListener('mouseleave', hideTip);
+
+  sel.addEventListener('change', function () { cat = this.value; draw(); });
+  document.getElementById('outs').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    outs = b.dataset.outs;
+    Array.prototype.forEach.call(this.querySelectorAll('button'), function (x) {
+      x.classList.toggle('on', x === b);
+    });
+    draw();
+  });
+
+  function paintLegend() {
+    document.getElementById('ramp').style.background =
+      'linear-gradient(to right,' + color(-lim) + ',' + color(0) + ',' + color(lim) + ')';
+    document.getElementById('lo').textContent = (-lim).toFixed(2) + ' runs';
+    document.getElementById('hi').textContent = '+' + lim.toFixed(2) + ' runs';
+  }
+  draw();
+})();
+</script>
+</body>
+</html>

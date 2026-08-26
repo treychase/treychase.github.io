@@ -46,6 +46,10 @@ to open it. Articles and Blogs rows show the summary alone with no toggle,
 since the whole row is already a link. Printing ignores the toggle and prints
 every description in full.
 
+Every card on the site links to something you can open — a report, a notebook,
+a dashboard or a live app. An entry with nothing to click does not earn a card;
+either give it an artifact or leave it off.
+
 Everything on the Projects, Articles and Blogs tabs comes from
 `data/projects.js`. An entry's `section` is one of `baseball`, `football`,
 `basketball`, `hockey`, `health`, `articles` or `blogs`; the first five are the
@@ -163,7 +167,7 @@ the note under *Publishing a rendered Quarto document* below.
 
 ## The hosted dashboards
 
-Three files in `projects/` are not write-ups but the dashboards themselves,
+Four files in `projects/` are not write-ups but the dashboards themselves,
 each a single self-contained page, so a project card can link to something that
 loads immediately rather than waiting on a Space to wake up:
 
@@ -172,6 +176,7 @@ loads immediately rather than waiting on a Space to wake up:
 | `projects/driveline-dashboard.html` | [driveline-pitching](https://github.com/treychase/driveline-pitching) | `python dashboard_html.py --out dashboard.html` |
 | `projects/driveline-hitting-dashboard.html` | [driveline-hitting](https://github.com/treychase/driveline-hitting) | `save_dashboard(swing_dashboard(...))`, see that repo's README |
 | `projects/skater-tracking-dashboard.html` | `tools/` in this repo, from the player-tracking analysis repo | `python tools/build_skater_dashboard.py --games-dir <that repo>/games` |
+| `projects/run-value-matrix.html` | `tools/` in this repo, from the run values repo | `python tools/build_run_values_page.py --rds <that repo>/master_run_values.rds` |
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
@@ -186,6 +191,14 @@ are embedded as integers in tenths of a foot, the resolution the feed carries,
 which is what keeps a whole twenty-minute period under a megabyte and a half.
 The generator belongs with its data and can move into the analysis repo
 whenever that repo is the one being edited.
+
+`build_run_values_page.py` works the same way for the run value matrix, reading
+`master_run_values.rds` and writing it into `run_values_template.html` as a
+diverging heatmap. **Output only, deliberately.** The team's dashboards and
+their code stay private; what is published is a table of run value by outcome,
+count, outs and base state, which carries no player, game or date. Keep it that
+way when regenerating: the check is that nothing identifying anybody ends up in
+the payload.
 
 Both copies carry two things appended at the bottom of the file: the footer
 described under *Copyright* below, and a short script that starts the animation
