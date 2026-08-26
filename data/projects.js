@@ -99,16 +99,21 @@ window.SITE_DATA = {
     },
     {
       section: "baseball",
-      title: "Daily reporting dashboard",
-      year: "2025",
-      tags: [],
-      status: "in-progress",
+      title: "MLB Daily Report",
+      pinned: true,
+      year: "2025 to present",
+      tags: ["Shiny dashboard", "Live"],
+      status: "",
       body: [
-        "An interactive dashboard summarizing every day of the MLB season: batter and pitcher profile views, Stuff+ metrics, percentile rankings, and leaderboards. An automated pipeline pulls from the MLB Stats API, Baseball Savant, Baseball Reference, and FanGraphs each morning, precomputes to cloud storage, and falls back to a live fetch when the cache misses.",
-        "A recursive Bayesian layer projects outcomes with a 90 percent credible interval, updated daily through conjugate Beta-Bernoulli filtering."
+        "A Shiny dashboard summarizing every MLB game from the previous day: box scores, the top hitting and pitching performances, monthly leaderboards, and click-through player cards carrying Statcast percentiles, pitch arsenals, movement profiles, and spray charts.",
+        "A Pitch Run Value tab ranks individual pitches rather than pitchers, one row per pitcher per pitch type. A Win Projections tab carries a recursive Bayesian filter that projects every team's final win total with a 90 percent credible interval and tracks how each projection moves day by day. A Betting tab prices player props off posterior-predictive game logs and reports vig-free fair odds.",
+        "The slow datasets are rebuilt once each morning by a scheduled job, validated, and published to a dataset repo the app reads from, so a page load never waits on the source APIs."
       ],
-      stack: "R, Shiny, tidyverse, public APIs",
-      links: [],
+      stack: "R, Shiny, bslib, baseballr, Hugging Face, GitHub Actions",
+      links: [
+        { label: "Launch the app", url: "https://treychase.shinyapps.io/mlb_daily_report/", primary: true },
+        { label: "Full documentation", url: "projects/mlb-daily-report.html" }
+      ],
       files: []
     },
     {
