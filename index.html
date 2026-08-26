@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trey Chase</title>
+<meta name="description" content="Trey Chase, data scientist and statistician. Projects in baseball, football, basketball, hockey, and player health.">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --paper:#ECEFE6;
+  --panel:#E3E7DB;
+  --ink:#14201B;
+  --muted:#4B5A52;
+  --field:#1F5C43;
+  --field-deep:#153F2E;
+  --gold:#DFA22C;
+  --line:rgba(20,32,27,.16);
+  --line-soft:rgba(20,32,27,.08);
+
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"Newsreader",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+
+  --max:1120px;
+  --gut:clamp(20px,5vw,56px);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:17px;
+  line-height:1.6;
+  font-optical-sizing:auto;
+}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--field);outline-offset:3px;border-radius:2px}
+
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+
+/* ---------- masthead ---------- */
+.masthead{padding:clamp(36px,7vw,72px) 0 0}
+.lockup{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) clamp(168px,19vw,236px);
+  gap:clamp(24px,4vw,52px);
+  align-items:end;
+}
+
+/* The headshot is cropped in the browser, so the original photo is never
+   altered. --hs-zoom scales it against the frame width, and --hs-x / --hs-y
+   pick the point of the photo that sits in the middle of the frame.
+   admin.html writes these three numbers into data/projects.js. */
+.portrait{
+  --hs-zoom:1;
+  --hs-x:50%;
+  --hs-y:50%;
+  margin:0;position:relative;align-self:end;
+  aspect-ratio:4/5;border:1px solid var(--line);overflow:hidden;
+  background:var(--field);
+}
+.portrait img{
+  position:absolute;z-index:1;
+  left:50%;top:50%;
+  width:calc(100% * var(--hs-zoom));height:auto;
+  transform:translate(calc(-1 * var(--hs-x)),calc(-1 * var(--hs-y)));
+  filter:saturate(.55) contrast(1.04);
+  transition:filter .4s ease;
+}
+.portrait:hover img{filter:saturate(1) contrast(1)}
+.monogram{
+  position:absolute;inset:0;display:grid;place-items:center;
+  background:var(--field);color:var(--paper);
+  font-family:var(--display);font-variation-settings:"wdth" 84;font-weight:800;
+  font-size:clamp(2.4rem,5.5vw,3.6rem);letter-spacing:-.05em;line-height:1;
+  user-select:none;
+}
+.portrait::after{
+  content:"";position:absolute;left:0;bottom:0;z-index:2;
+  width:30px;height:3px;background:var(--gold);
+}
+@media (max-width:760px){
+  .lockup{grid-template-columns:1fr;gap:clamp(22px,5vw,32px)}
+  .portrait{max-width:158px;order:-1}
+}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:11px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 clamp(14px,2.5vw,22px);
+}
+.eyebrow span{color:var(--field)}
+
+h1.name{
+  font-family:var(--display);
+  font-variation-settings:"wdth" 96;
+  font-weight:800;
+  font-size:clamp(3rem,12.5vw,8.25rem);
+  line-height:.86;letter-spacing:-.035em;margin:0;text-transform:uppercase;
+}
+h1.name .second{display:block;color:var(--field)}
+
+.credentials{
+  font-family:var(--mono);
+  font-size:clamp(11px,1.5vw,13px);
+  letter-spacing:.04em;color:var(--muted);
+  margin:clamp(16px,2.5vw,24px) 0 0;max-width:60ch;
+}
+.credentials b{color:var(--ink);font-weight:500}
+
+.contact{
+  list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;
+  padding:0;margin:18px 0 0;
+  font-family:var(--mono);font-size:12.5px;letter-spacing:.02em;
+}
+.contact a{
+  display:inline-flex;align-items:center;gap:9px;
+  text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:3px;
+  transition:border-color .18s ease,color .18s ease;
+}
+.contact a:hover{border-color:var(--field);color:var(--field)}
+.contact svg{width:14px;height:14px;flex:0 0 14px;color:var(--field);transition:color .18s ease}
+.contact a:hover svg{color:var(--gold)}
+
+/* ---------- signature: tracking band ---------- */
+.band{
+  margin-top:clamp(28px,5vw,48px);
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  position:relative;
+  background:linear-gradient(to bottom,rgba(31,92,67,.045),rgba(31,92,67,.015));
+}
+.band canvas{display:block;width:100%;height:clamp(96px,14vw,156px)}
+.band .band-label{
+  position:absolute;left:var(--gut);bottom:8px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(20,32,27,.35);pointer-events:none;
+}
+
+/* ---------- primary tabs ---------- */
+.tabsbar{
+  position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--paper) 92%,transparent);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+}
+.tablist{display:flex;gap:clamp(14px,3vw,34px);overflow-x:auto;scrollbar-width:none}
+.tablist::-webkit-scrollbar{display:none}
+.tab{
+  appearance:none;background:none;border:0;padding:18px 0 15px;cursor:pointer;
+  color:var(--muted);
+  font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:color .18s ease,border-color .18s ease;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--gold)}
+
+/* ---------- panels ---------- */
+main{padding:clamp(40px,6vw,72px) 0 clamp(64px,10vw,120px);min-height:56vh}
+.panel[hidden],.view[hidden]{display:none}
+.panel,.view{animation:rise .34s cubic-bezier(.2,.7,.3,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.lede{
+  font-size:clamp(1.15rem,2.4vw,1.5rem);line-height:1.45;max-width:34ch;
+  margin:0 0 clamp(30px,5vw,52px);font-weight:300;
+}
+h2.section{
+  font-family:var(--display);font-variation-settings:"wdth" 88;font-weight:700;
+  font-size:clamp(1.6rem,4vw,2.4rem);letter-spacing:-.02em;line-height:1.05;
+  margin:0 0 6px;text-transform:uppercase;
+}
+.section-note{
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 clamp(24px,4vw,36px);
+}
+
+/* ---------- category dashboard ---------- */
+.tiles{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:clamp(10px,1.6vw,16px);
+  margin:0 0 clamp(46px,7vw,76px);
+  padding:0;list-style:none;
+}
+.tile{
+  appearance:none;cursor:pointer;
+  position:relative;aspect-ratio:1/1;width:100%;
+  background:var(--paper);border:1px solid var(--line);border-radius:2px;
+  padding:clamp(14px,2vw,20px);
+  display:flex;flex-direction:column;justify-content:space-between;
+  text-align:left;color:var(--ink);overflow:hidden;
+  transition:background .22s ease,border-color .22s ease,transform .22s cubic-bezier(.2,.7,.3,1);
+}
+.tile:hover{background:var(--panel);border-color:var(--field);transform:translateY(-3px)}
+.tile:disabled{cursor:default;opacity:.6}
+.tile:disabled:hover{background:var(--paper);border-color:var(--line);transform:none}
+.tile .surface{
+  position:absolute;left:12%;bottom:-4%;width:76%;
+  color:var(--field);opacity:.15;pointer-events:none;
+  transition:opacity .22s ease,color .22s ease,transform .22s cubic-bezier(.2,.7,.3,1);
+}
+.tile:hover .surface{opacity:.3;color:var(--field-deep);transform:scale(1.05)}
+.tile:disabled .surface{opacity:.08}
+.tile .n{
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;
+  color:var(--muted);align-self:flex-end;position:relative;z-index:1;
+  transition:color .22s ease;
+}
+.tile:hover .n{color:var(--field)}
+.tile .cat{
+  font-family:var(--display);font-variation-settings:"wdth" 90;font-weight:700;
+  font-size:clamp(1.05rem,2.1vw,1.32rem);line-height:1.05;letter-spacing:-.015em;
+  text-transform:uppercase;margin:0;position:relative;z-index:1;
+}
+.tile .cat small{
+  display:block;font-family:var(--mono);font-weight:400;font-size:9.5px;
+  letter-spacing:.11em;color:var(--muted);margin-top:8px;text-transform:uppercase;
+}
+
+/* ---------- back link ---------- */
+.back{
+  appearance:none;background:none;border:0;padding:0;cursor:pointer;
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);display:inline-flex;align-items:center;gap:10px;
+  margin:0 0 clamp(22px,3.5vw,32px);
+  transition:color .18s ease,gap .18s ease;
+}
+.back:hover{color:var(--field);gap:15px}
+.back svg{width:12px;height:12px}
+
+/* ---------- project cards ---------- */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
+  gap:1px;
+  border:1px solid var(--line);
+  background:var(--line);
+}
+.card{
+  position:relative;
+  background:var(--paper);
+  padding:clamp(20px,3vw,28px);
+  transition:background .22s ease;
+}
+.card::before{
+  content:"";position:absolute;left:0;top:0;height:2px;width:100%;
+  background:var(--field);transform:scaleX(0);transform-origin:left;
+  transition:transform .3s cubic-bezier(.2,.7,.3,1);
+}
+.card:hover{background:var(--panel)}
+.card:hover::before{transform:scaleX(1)}
+.card h3{
+  font-family:var(--display);font-variation-settings:"wdth" 92;font-weight:700;
+  font-size:1.16rem;line-height:1.2;letter-spacing:-.015em;margin:0 0 10px;
+}
+.card p{margin:0 0 12px;font-size:16px;line-height:1.55}
+.card p:last-of-type{margin-bottom:0}
+
+/* ---------- statline shared by cards and entries ---------- */
+.statline,
+.card .statline,
+.entry .statline{
+  font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 10px;line-height:1.7;
+}
+.statline .sep{opacity:.35;margin:0 3px}
+.statline .live{color:var(--field);font-weight:700}
+.statline .live::before{
+  content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--gold);margin-right:6px;vertical-align:1px;
+}
+
+/* ---------- stack, links, attachments ---------- */
+.card .stack,.entry .stack{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);
+  margin:16px 0 0;padding-top:13px;border-top:1px solid var(--line-soft);
+}
+.go{
+  display:inline-flex;align-items:center;gap:8px;margin:16px 16px 0 0;
+  font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.13em;
+  text-transform:uppercase;text-decoration:none;color:var(--field);
+  border-bottom:1px solid var(--line);padding-bottom:3px;
+  transition:color .18s ease,border-color .18s ease,gap .18s ease;
+}
+.go::after{content:"\2192"}
+.go:hover{color:var(--field-deep);border-color:var(--field);gap:13px}
+.attachments{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.attachments a{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+  text-decoration:none;color:var(--muted);
+  border:1px solid var(--line);border-radius:999px;padding:6px 13px;
+  transition:border-color .18s ease,color .18s ease,background .18s ease;
+}
+.attachments a:hover{border-color:var(--field);color:var(--field);background:var(--panel)}
+.attachments svg{width:12px;height:12px;flex:0 0 12px}
+
+/* ---------- pinned block ---------- */
+.featured{margin:0}
+.featured[hidden]{display:none}
+.featured-head{
+  display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  margin:0 0 16px;
+}
+.featured-head h3{
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--field);margin:0;
+}
+.featured-head .rule{flex:1;height:1px;background:var(--line);min-width:40px}
+.featured .grid{background:var(--line-soft)}
+.featured .card{background:var(--panel)}
+.featured .card:hover{background:#DCE1D3}
+.featured .card::before{transform:scaleX(1);width:100%;height:2px;background:var(--gold)}
+.badge{
+  display:inline-block;
+  font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--field);border:1px solid var(--line);border-radius:999px;padding:3px 9px;
+}
+
+/* ---------- empty state ---------- */
+.empty{border:1px dashed var(--line);padding:clamp(32px,6vw,56px);max-width:52ch}
+.empty h3{
+  font-family:var(--display);font-variation-settings:"wdth" 90;font-weight:700;
+  font-size:1.3rem;margin:0 0 10px;letter-spacing:-.01em;
+}
+.empty p{margin:0;color:var(--muted);font-size:16px}
+
+/* ---------- writing list ---------- */
+.entries{border-top:1px solid var(--line)}
+.entries:empty{display:none}
+.entry{
+  display:block;text-decoration:none;padding:24px 0;border-bottom:1px solid var(--line);
+  transition:padding-left .22s cubic-bezier(.2,.7,.3,1);
+}
+a.entry:hover{padding-left:12px}
+.entry .statline{margin-bottom:8px}
+.entry h3{
+  font-family:var(--display);font-variation-settings:"wdth" 92;font-weight:700;
+  font-size:1.2rem;margin:0 0 8px;letter-spacing:-.01em;
+}
+.entry p{margin:0 0 6px;color:var(--muted);font-size:16px;max-width:70ch}
+
+/* ---------- resume ---------- */
+.resume{max-width:820px}
+.resume-head{
+  display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:16px;
+  padding-bottom:16px;border-bottom:2px solid var(--ink);
+}
+.btn{
+  display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  text-decoration:none;background:var(--field);color:var(--paper);padding:11px 20px;border-radius:999px;
+  transition:background .2s ease;
+}
+.btn:hover{background:var(--field-deep)}
+.res-block{padding:clamp(26px,4vw,38px) 0;border-bottom:1px solid var(--line)}
+.res-block:last-child{border-bottom:0}
+.res-block > h3{
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--field);margin:0 0 22px;
+}
+.role{margin:0 0 30px}
+.role:last-child{margin-bottom:0}
+.role-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 20px;margin-bottom:4px}
+.role-title{
+  font-family:var(--display);font-variation-settings:"wdth" 92;font-weight:700;
+  font-size:1.12rem;letter-spacing:-.01em;margin:0;
+}
+.role-when{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);white-space:nowrap}
+.role-where{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);margin:0 0 12px}
+.role ul{margin:0;padding-left:19px}
+.role li{margin-bottom:7px;font-size:16px;line-height:1.5}
+.role li::marker{color:var(--gold)}
+.skills{display:flex;flex-wrap:wrap;gap:7px;padding:0;margin:0;list-style:none}
+.skills li{
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:999px;padding:7px 13px;color:var(--muted);
+}
+.summary{margin:0;font-size:17px;line-height:1.6;max-width:70ch}
+
+/* ---------- footer ---------- */
+footer{
+  border-top:1px solid var(--line);padding:34px 0 46px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between;
+}
+footer a{text-decoration:none;border-bottom:1px solid var(--line)}
+footer a:hover{color:var(--field);border-color:var(--field)}
+
+@media (max-width:560px){
+  body{font-size:16px}
+  .grid{grid-template-columns:1fr}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+   <div class="lockup">
+    <div>
+    <p class="eyebrow">Data scientist <span>/</span> statistician <span>/</span> sports analytics</p>
+    <h1 class="name">Trey<span class="second">Chase</span></h1>
+    <p class="credentials">
+      <b>M.S. Statistical Science</b>, Duke University &nbsp;&middot;&nbsp;
+      <b>B.S. Mathematics</b>, Cal Poly San Luis Obispo
+    </p>
+    <ul class="contact">
+      <li><a href="mailto:treychase64@gmail.com">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2.5 7 9.5 6 9.5-6"/></svg>
+        treychase64@gmail.com</a></li>
+      <li><a href="https://github.com/treychase" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        github.com/treychase</a></li>
+      <li><a href="https://www.linkedin.com/in/trey-chase" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.35-1.85 3.59 0 4.26 2.37 4.26 5.45v6.29zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>
+        linkedin.com/in/trey-chase</a></li>
+    </ul>
+    </div>
+
+    <figure class="portrait" id="portrait">
+      <span class="monogram" aria-hidden="true">TC</span>
+      <img id="headshot" alt="Trey Chase" hidden>
+    </figure>
+   </div>
+  </div>
+
+  <div class="band">
+    <canvas id="track" aria-hidden="true"></canvas>
+    <span class="band-label">Positional tracking, one second per frame</span>
+  </div>
+</header>
+
+<div class="tabsbar">
+  <div class="wrap">
+    <div class="tablist" role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" id="tab-projects" aria-controls="panel-projects" data-tab="projects" aria-selected="true">Projects</button>
+      <button class="tab" role="tab" id="tab-articles" aria-controls="panel-articles" data-tab="articles" aria-selected="false">Articles</button>
+      <button class="tab" role="tab" id="tab-blogs"    aria-controls="panel-blogs"    data-tab="blogs"    aria-selected="false">Blogs</button>
+      <button class="tab" role="tab" id="tab-resume"   aria-controls="panel-resume"   data-tab="resume"   aria-selected="false">Resume</button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- ============ PROJECTS ============ -->
+  <section class="panel" id="panel-projects" role="tabpanel" aria-labelledby="tab-projects" tabindex="0">
+
+    <!-- category dashboard -->
+    <div class="view" id="view-index">
+      <p class="lede">Modeling and measurement work. Pick a category.</p>
+
+      <div class="tiles" id="tiles"></div>
+
+      <div class="featured" id="featured" hidden>
+        <div class="featured-head">
+          <h3>Start here</h3>
+          <span class="rule"></span>
+        </div>
+        <div class="grid" id="featured-grid"></div>
+      </div>
+    </div>
+
+    <!-- one category -->
+    <div class="view" id="view-detail" hidden>
+      <button class="back" id="back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg>
+        All categories
+      </button>
+      <h2 class="section" id="detail-title"></h2>
+      <p class="section-note" id="detail-note"></p>
+      <div id="detail-body"></div>
+    </div>
+  </section>
+
+  <!-- ============ ARTICLES ============ -->
+  <section class="panel" id="panel-articles" role="tabpanel" aria-labelledby="tab-articles" tabindex="0" hidden>
+    <h2 class="section">Articles</h2>
+    <p class="section-note">Long-form writing on modeling and measurement</p>
+    <div class="entries" data-render="articles"></div>
+  </section>
+
+  <!-- ============ BLOGS ============ -->
+  <section class="panel" id="panel-blogs" role="tabpanel" aria-labelledby="tab-blogs" tabindex="0" hidden>
+    <h2 class="section">Blogs</h2>
+    <p class="section-note">Shorter notes from inside the work</p>
+    <div class="entries" data-render="blogs"></div>
+  </section>
+
+  <!-- ============ RESUME ============ -->
+  <section class="panel resume" id="panel-resume" role="tabpanel" aria-labelledby="tab-resume" tabindex="0" hidden>
+
+    <div class="resume-head">
+      <h2 class="section">Resume</h2>
+      <a class="btn" href="files/trey_chase_resume.pdf" download>Download PDF</a>
+    </div>
+
+    <div class="res-block">
+      <h3>Profile</h3>
+      <p class="summary">Data scientist and statistician with a track record of building end-to-end analytical tools, from automated data pipelines to deployed dashboards, that translate complex data into insights driving business and operational decisions.</p>
+    </div>
+
+    <div class="res-block">
+      <h3>Skills</h3>
+      <ul class="skills">
+        <li>Python</li><li>R</li><li>SQL</li><li>Shiny</li><li>Streamlit</li>
+        <li>Bayesian modeling</li><li>XGBoost</li><li>Snowflake</li>
+        <li>Data visualization</li><li>UI design</li><li>Communication</li>
+      </ul>
+    </div>
+
+    <div class="res-block">
+      <h3>Professional experience</h3>
+
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Data Analyst</h4>
+          <span class="role-when">Oct 2025 to May 2026</span>
+        </div>
+        <p class="role-where">National Basketball Association, Remote</p>
+        <ul>
+          <li>Designed and deployed the organization's first compliance dashboards for a new large-scale data assessment program.</li>
+          <li>Enhanced existing analytics dashboards to uncover trends across large, longitudinal datasets, supporting stakeholder decision-making.</li>
+          <li>Partnered with data engineering to automate an end-to-end data processing pipeline for high-volume sensor and operational data.</li>
+        </ul>
+      </div>
+
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Data Analyst Intern</h4>
+          <span class="role-when">Jun 2025 to Aug 2025</span>
+        </div>
+        <p class="role-where">National Basketball Association, New York</p>
+        <ul>
+          <li>Led the processing and engineering of large, complex datasets for internal analytics use.</li>
+          <li>Developed the organization's first analytics dashboards, providing advanced insight into performance and risk.</li>
+          <li>Optimized internal testing and scheduling processes, improving operational efficiency across teams.</li>
+          <li>Recognized with the Intern MVP Award for outstanding performance.</li>
+        </ul>
+      </div>
+
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Head of Data Analytics</h4>
+          <span class="role-when">Aug 2024 to May 2026</span>
+        </div>
+        <p class="role-where">Duke University Baseball, Durham</p>
+        <ul>
+          <li>Implemented a predictive outcomes model for a new leadership team to assess performance.</li>
+          <li>Collaborated on designing and implementing the user interface for a new analytics dashboard.</li>
+          <li>Built a new analytical module within an internal dashboard, enhancing evaluation capabilities.</li>
+          <li>Taught undergraduates essential skills such as programming in R, statistical theory, and applied analytics fundamentals.</li>
+        </ul>
+      </div>
+
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Director of Operations Analytics</h4>
+          <span class="role-when">May 2024 to Aug 2024</span>
+        </div>
+        <p class="role-where">San Luis Obispo Blues, San Luis Obispo</p>
+        <ul>
+          <li>Leveraged statistical methods, visualization, and internal software to manage organizational data.</li>
+          <li>Informed strategic decision-making by analyzing tracking data and collaborating with leadership.</li>
+          <li>Helped lead the organization to its best result in three years, increasing its success rate by 19 percent year over year.</li>
+        </ul>
+      </div>
+
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Data Analyst</h4>
+          <span class="role-when">Jan 2022 to Jun 2023</span>
+        </div>
+        <p class="role-where">Cal Poly Baseball, San Luis Obispo</p>
+        <ul>
+          <li>Constructed weekly analytical reports on external groups, utilizing large public datasets.</li>
+          <li>Tracked and tagged performance data, captured and processed video and data submissions.</li>
+          <li>Established a culture of data-informed decision-making within the organization.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="res-block">
+      <h3>Projects</h3>
+
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Master's Portfolio Project</h4>
+          <span class="role-when">Jan 2026 to May 2026</span>
+        </div>
+        <p class="role-where">Duke University, Durham</p>
+        <ul>
+          <li>Developed a Bayesian index modeling a continuous outcome as a function of multiple mechanical and contextual covariates using brms and Stan on a multi-year dataset.</li>
+          <li>Produced a data-driven quality metric across multiple categories to streamline decision-making for end users.</li>
+          <li>Received the Award for Best Portfolio in the Duke Statistical Science Program.</li>
+        </ul>
+      </div>
+
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Daily Reporting Dashboard</h4>
+          <span class="role-when">2025 to present</span>
+        </div>
+        <p class="role-where">Personal project</p>
+        <ul>
+          <li>Built and deployed an interactive dashboard summarizing daily results, with automated reporting, leaderboards, and detail views showing percentile rankings and profiles.</li>
+          <li>Engineered an automated daily data pipeline integrating multiple public APIs, precomputing datasets to cloud storage with a live-fetch fallback.</li>
+          <li>Built a recursive Bayesian model projecting outcomes with a 90 percent credible interval, updated daily using conjugate Beta-Bernoulli filtering.</li>
+        </ul>
+      </div>
+
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Data Analyst</h4>
+          <span class="role-when">Aug 2024 to Dec 2024</span>
+        </div>
+        <p class="role-where">Driveline Baseball</p>
+        <ul>
+          <li>Independent project using a large open-source motion and sensor dataset.</li>
+          <li>Cleaned, transformed, and analyzed data to assess performance.</li>
+          <li>Contributed to applying data-driven insights toward development processes.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="res-block">
+      <h3>Education</h3>
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Master of Science in Statistical Science</h4>
+          <span class="role-when">Aug 2024 to May 2026</span>
+        </div>
+        <p class="role-where">Duke University &nbsp;&middot;&nbsp; GPA 3.70</p>
+      </div>
+      <div class="role">
+        <div class="role-head">
+          <h4 class="role-title">Bachelor of Science in Mathematics</h4>
+          <span class="role-when">Sep 2019 to Jun 2023</span>
+        </div>
+        <p class="role-where">Cal Poly San Luis Obispo &nbsp;&middot;&nbsp; GPA 3.60</p>
+      </div>
+    </div>
+
+    <div class="res-block">
+      <h3>Contact</h3>
+      <ul class="contact" style="margin-top:0">
+        <li><a href="mailto:treychase64@gmail.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2.5 7 9.5 6 9.5-6"/></svg>
+          treychase64@gmail.com</a></li>
+        <li><a href="https://www.linkedin.com/in/trey-chase" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.47-.9 1.63-1.85 3.35-1.85 3.59 0 4.26 2.37 4.26 5.45v6.29zM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14zM7.12 20.45H3.55V9h3.57v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>
+          linkedin.com/in/trey-chase</a></li>
+        <li><a href="https://github.com/treychase" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          github.com/treychase</a></li>
+      </ul>
+    </div>
+
+  </section>
+</main>
+
+<footer class="wrap">
+  <span>Trey Chase &nbsp;&middot;&nbsp; Durham, North Carolina</span>
+  <span><a href="mailto:treychase64@gmail.com">Get in touch</a></span>
+</footer>
+
+<script src="data/projects.js"></script>
+<script>
+(function () {
+  var SITE = window.SITE_DATA || {};
+  var DATA = SITE.entries || [];
+  var PROFILE = SITE.profile || {};
+
+  /* ---------- headshot, cropped in the browser ----------
+     The photo is never modified on disk. admin.html stores three numbers
+     in data/projects.js and they become CSS custom properties here. */
+  (function () {
+    var fig = document.getElementById('portrait');
+    var img = document.getElementById('headshot');
+    if (!fig || !img) return;
+
+    var hs = PROFILE.headshot || {};
+    if (!hs.src) { img.remove(); return; }
+
+    var zoom = Number(hs.zoom);
+    var x = Number(hs.x);
+    var y = Number(hs.y);
+
+    fig.style.setProperty('--hs-zoom', isFinite(zoom) && zoom > 0 ? zoom : 1);
+    fig.style.setProperty('--hs-x', (isFinite(x) ? x : 50) + '%');
+    fig.style.setProperty('--hs-y', (isFinite(y) ? y : 50) + '%');
+
+    /* the monogram stays visible until the photo actually loads */
+    img.onload = function () { img.hidden = false; };
+    img.onerror = function () { img.remove(); };
+    img.src = hs.src;
+  })();
+
+  /* Each square carries a line drawing of its own playing surface.
+     Health gets a load-and-recovery trace instead of a field. */
+  var SURFACES = {
+    baseball:
+      '<path d="M50 84 L12 46"/><path d="M50 84 L88 46"/>'
+    + '<path d="M12 46 A53.7 53.7 0 0 1 88 46"/>'
+    + '<path d="M50 76 L28 54 L50 32 L72 54 Z"/><circle cx="50" cy="54" r="4"/>',
+    football:
+      '<rect x="8" y="28" width="84" height="48"/>'
+    + '<path d="M24 28v48M40 28v48M60 28v48M76 28v48"/>'
+    + '<path d="M50 28v48" stroke-dasharray="4 4"/>'
+    + '<path d="M44 38h12M44 52h12M44 66h12"/>',
+    basketball:
+      '<rect x="14" y="12" width="72" height="80"/>'
+    + '<rect x="36" y="12" width="28" height="34"/>'
+    + '<circle cx="50" cy="46" r="12"/>'
+    + '<path d="M18 12v22a32 32 0 0 0 64 0V12"/>'
+    + '<path d="M42 12h16"/>',
+    hockey:
+      '<rect x="8" y="22" width="84" height="60" rx="22"/>'
+    + '<path d="M50 22v60"/><circle cx="50" cy="52" r="9"/>'
+    + '<circle cx="26" cy="38" r="7"/><circle cx="26" cy="66" r="7"/>'
+    + '<circle cx="74" cy="38" r="7"/><circle cx="74" cy="66" r="7"/>'
+    + '<path d="M8 34v36M92 34v36"/>',
+    health:
+      '<path d="M8 82h84"/>'
+    + '<path d="M8 62h84" stroke-dasharray="3 5" opacity=".7"/>'
+    + '<path d="M10 72 L26 54 L38 64 L52 26 L64 50 L78 40 L92 46"/>'
+    + '<circle cx="26" cy="54" r="3.5"/><circle cx="52" cy="26" r="3.5"/><circle cx="78" cy="40" r="3.5"/>'
+  };
+
+  var CATEGORIES = [
+    { key: 'baseball',   name: 'Baseball',   blurb: 'Pitch quality, daily reporting', note: 'Pitch quality, expected outcomes, and daily reporting' },
+    { key: 'football',   name: 'Football',   blurb: 'Nothing yet',                    note: 'Positional and play-level work' },
+    { key: 'basketball', name: 'Basketball', blurb: 'Projection, valuation',          note: 'Projection, valuation, and the data behind both' },
+    { key: 'hockey',     name: 'Hockey',     blurb: 'Skater tracking',                note: 'Skating and positional tracking' },
+    { key: 'health',     name: 'Health',     blurb: 'Biomechanics, availability',     note: 'Biomechanics, availability, and the systems that keep the data honest' }
+  ];
+
+  var LABELS = {
+    baseball: 'Baseball', football: 'Football', basketball: 'Basketball',
+    hockey: 'Hockey', health: 'Health', articles: 'Article', blogs: 'Blog'
+  };
+
+  var EMPTY = {
+    baseball:   ['Nothing on the board yet', 'Baseball work will be listed here as it is finished.'],
+    football:   ['Nothing on the board yet', 'Football work will be listed here as it is finished. In the meantime, the closest thing is the hockey tracking project, which uses the same kind of positional data.'],
+    basketball: ['Nothing on the board yet', 'Basketball work will be listed here as it is finished.'],
+    hockey:     ['Nothing on the board yet', 'Hockey work will be listed here as it is finished.'],
+    health:     ['Nothing here yet', 'Player health work will be listed here as it is finished.'],
+    articles:   ['First piece is being written', 'Published articles will be listed here, most recent first. Until then, the project write-ups are the closest thing to a paper trail.'],
+    blogs:      ['Nothing posted yet', 'Short posts on what broke, what the data actually looked like, and what changed the model will go here.']
+  };
+
+  var FILE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function rowsIn(key) { return DATA.filter(function (e) { return e && e.section === key; }); }
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+  /* ---------- markup ---------- */
+  function statline(e) {
+    var bits = [];
+    if (e.year) bits.push(esc(e.year));
+    (e.tags || []).forEach(function (t) { if (t) bits.push(esc(t)); });
+    if (e.status === 'in-progress') bits.push('<span class="live">In progress</span>');
+    else if (e.status === 'shelved') bits.push('Shelved');
+    if (!bits.length) return '';
+    return '<p class="statline">' + bits.join(' <span class="sep">/</span> ') + '</p>';
+  }
+
+  function extras(e) {
+    var out = '';
+    (e.links || []).forEach(function (l) {
+      if (!l || !l.url) return;
+      out += '<a class="go" href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label || 'Open') + '</a>';
+    });
+    var files = (e.files || []).filter(function (f) { return f && f.path; });
+    if (files.length) {
+      out += '<div class="attachments">';
+      files.forEach(function (f) {
+        out += '<a href="' + esc(f.path) + '" target="_blank" rel="noopener">' + FILE_ICON + esc(f.name || f.path) + '</a>';
+      });
+      out += '</div>';
+    }
+    return out;
+  }
+
+  function cardHTML(e, showBadge) {
+    var html = '<article class="card"><h3>' + esc(e.title) + '</h3>' + statline(e);
+    (e.body || []).forEach(function (p) { if (p) html += '<p>' + esc(p) + '</p>'; });
+    if (e.stack) html += '<p class="stack">' + esc(e.stack) + '</p>';
+    html += extras(e);
+    if (showBadge && LABELS[e.section]) {
+      html += '<div style="display:flex;margin-top:16px"><span class="badge">' + esc(LABELS[e.section]) + '</span></div>';
+    }
+    return html + '</article>';
+  }
+
+  function entryHTML(e) {
+    var href = (e.links && e.links[0] && e.links[0].url) || '';
+    var tag = href ? 'a' : 'div';
+    var open = href
+      ? '<a class="entry" href="' + esc(href) + '" target="_blank" rel="noopener">'
+      : '<div class="entry">';
+    var html = open + statline(e) + '<h3>' + esc(e.title) + '</h3>';
+    (e.body || []).forEach(function (p) { if (p) html += '<p>' + esc(p) + '</p>'; });
+    return html + extras(e) + '</' + tag + '>';
+  }
+
+  function emptyHTML(key) {
+    var m = EMPTY[key] || ['Nothing here yet', 'Content will appear here once it is added.'];
+    return '<div class="empty"><h3>' + esc(m[0]) + '</h3><p>' + esc(m[1]) + '</p></div>';
+  }
+
+  /* ---------- the dashboard of squares ---------- */
+  var tiles = document.getElementById('tiles');
+  tiles.innerHTML = CATEGORIES.map(function (c) {
+    var n = rowsIn(c.key).length;
+    return '<button class="tile" data-cat="' + c.key + '"' + (n ? '' : ' disabled')
+         +   ' aria-label="' + esc(c.name) + ', ' + n + (n === 1 ? ' project' : ' projects') + '">'
+         +   '<svg class="surface" viewBox="0 0 100 100" fill="none" stroke="currentColor" '
+         +     'stroke-width="2.4" stroke-linejoin="round" aria-hidden="true">' + SURFACES[c.key] + '</svg>'
+         +   '<span class="n">' + pad(n) + '</span>'
+         +   '<span class="cat">' + esc(c.name) + '<small>' + esc(n ? c.blurb : 'Nothing yet') + '</small></span>'
+         + '</button>';
+  }).join('');
+
+  /* ---------- pinned ---------- */
+  var picks = DATA.filter(function (e) { return e && e.pinned === true; });
+  if (picks.length) {
+    document.getElementById('featured').hidden = false;
+    document.getElementById('featured-grid').innerHTML =
+      picks.map(function (e) { return cardHTML(e, true); }).join('');
+  }
+
+  /* ---------- articles and blogs ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('[data-render]'), function (host) {
+    var key = host.getAttribute('data-render');
+    var rows = rowsIn(key);
+    if (!rows.length) { host.insertAdjacentHTML('afterend', emptyHTML(key)); return; }
+    host.innerHTML = rows.map(entryHTML).join('');
+  });
+
+  /* ---------- drill down ---------- */
+  var viewIndex  = document.getElementById('view-index');
+  var viewDetail = document.getElementById('view-detail');
+  var backBtn    = document.getElementById('back');
+  var dTitle = document.getElementById('detail-title');
+  var dNote  = document.getElementById('detail-note');
+  var dBody  = document.getElementById('detail-body');
+  var openCat = null;
+
+  function showCategory(key, fromClick) {
+    var cat = CATEGORIES.filter(function (c) { return c.key === key; })[0];
+    if (!cat) return false;
+    var rows = rowsIn(key);
+
+    dTitle.textContent = cat.name;
+    dNote.textContent = cat.note;
+    dBody.innerHTML = rows.length
+      ? '<div class="grid">' + rows.map(function (e) { return cardHTML(e, false); }).join('') + '</div>'
+      : emptyHTML(key);
+
+    viewIndex.hidden = true;
+    viewDetail.hidden = false;
+    openCat = key;
+    history.replaceState(null, '', '#' + key);
+    if (fromClick) backBtn.focus();
+    return true;
+  }
+
+  function showDashboard() {
+    viewDetail.hidden = true;
+    viewIndex.hidden = false;
+    var prev = openCat;
+    openCat = null;
+    history.replaceState(null, '', '#projects');
+    var t = prev && tiles.querySelector('[data-cat="' + prev + '"]');
+    if (t) t.focus();
+  }
+
+  tiles.addEventListener('click', function (ev) {
+    var t = ev.target.closest('.tile');
+    if (!t || t.disabled) return;
+    showCategory(t.getAttribute('data-cat'), true);
+  });
+
+  backBtn.addEventListener('click', showDashboard);
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && openCat && !viewDetail.hidden) showDashboard();
+  });
+
+  /* ---------- tabs ---------- */
+  function wire(btnSel, onChange) {
+    var buttons = Array.prototype.slice.call(document.querySelectorAll(btnSel));
+    if (!buttons.length) return null;
+
+    function select(btn, focus) {
+      buttons.forEach(function (b) {
+        var on = b === btn;
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        var p = document.getElementById(b.getAttribute('aria-controls'));
+        if (p) p.hidden = !on;
+      });
+      if (focus) btn.focus();
+      if (onChange) onChange(btn);
+    }
+
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () { select(btn, false); });
+      btn.addEventListener('keydown', function (e) {
+        var i = buttons.indexOf(btn), n = buttons.length, t = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') t = buttons[(i + 1) % n];
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') t = buttons[(i - 1 + n) % n];
+        else if (e.key === 'Home') t = buttons[0];
+        else if (e.key === 'End') t = buttons[n - 1];
+        if (t) { e.preventDefault(); select(t, true); }
+      });
+    });
+    return { buttons: buttons, select: select };
+  }
+
+  var main = wire('.tab', function (btn) {
+    if (btn.dataset.tab === 'projects') {
+      if (!openCat) history.replaceState(null, '', '#projects');
+      return;
+    }
+    history.replaceState(null, '', '#' + btn.dataset.tab);
+  });
+
+  /* open from the URL hash, so tabs and categories are both linkable */
+  var hash = (location.hash || '').replace('#', '');
+  if (hash && main) {
+    var tab = main.buttons.filter(function (b) { return b.dataset.tab === hash; })[0];
+    if (tab) main.select(tab, false);
+    else showCategory(hash, false);
+  }
+
+  /* ---------- signature: tracking band ---------- */
+  var canvas = document.getElementById('track');
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext('2d');
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var dots = [], W = 0, H = 0, dpr = 1;
+
+  function seed() {
+    dots = [];
+    for (var i = 0; i < 16; i++) {
+      dots.push({
+        x: Math.random() * W,
+        y: 12 + Math.random() * (H - 24),
+        vx: (Math.random() - 0.5) * 0.55,
+        vy: (Math.random() - 0.5) * 0.28,
+        puck: i === 0,
+        trail: []
+      });
+    }
+  }
+
+  function size() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = canvas.clientWidth; H = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    seed();
+  }
+
+  function gridlines() {
+    ctx.strokeStyle = 'rgba(20,32,27,0.07)';
+    ctx.lineWidth = 1;
+    for (var x = 44; x < W; x += 44) {
+      ctx.beginPath(); ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(0, H / 2 + 0.5); ctx.lineTo(W, H / 2 + 0.5); ctx.stroke();
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    gridlines();
+    dots.forEach(function (d) {
+      if (!still) {
+        d.x += d.vx; d.y += d.vy;
+        if (d.x < 4 || d.x > W - 4) d.vx *= -1;
+        if (d.y < 10 || d.y > H - 10) d.vy *= -1;
+        if (Math.random() < 0.012) { d.vx += (Math.random() - 0.5) * 0.3; d.vy += (Math.random() - 0.5) * 0.2; }
+        d.vx = Math.max(-0.9, Math.min(0.9, d.vx));
+        d.vy = Math.max(-0.5, Math.min(0.5, d.vy));
+        d.trail.push([d.x, d.y]);
+        if (d.trail.length > 26) d.trail.shift();
+      }
+      if (d.trail.length > 1) {
+        ctx.beginPath();
+        ctx.moveTo(d.trail[0][0], d.trail[0][1]);
+        for (var i = 1; i < d.trail.length; i++) ctx.lineTo(d.trail[i][0], d.trail[i][1]);
+        ctx.strokeStyle = d.puck ? 'rgba(223,162,44,0.5)' : 'rgba(31,92,67,0.22)';
+        ctx.lineWidth = d.puck ? 1.4 : 1;
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.puck ? 3.4 : 2.4, 0, Math.PI * 2);
+      ctx.fillStyle = d.puck ? '#DFA22C' : 'rgba(31,92,67,0.6)';
+      ctx.fill();
+    });
+    if (!still) requestAnimationFrame(frame);
+  }
+
+  size();
+  window.addEventListener('resize', size);
+  frame();
+})();
+</script>
+
+</body>
+</html>

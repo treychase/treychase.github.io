@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor &middot; Trey Chase</title>
+<meta name="robots" content="noindex, nofollow">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:opsz,wght@6..72,300..600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --paper:#ECEFE6;--panel:#E3E7DB;--ink:#14201B;--muted:#4B5A52;
+  --field:#1F5C43;--field-deep:#153F2E;--gold:#DFA22C;
+  --line:rgba(20,32,27,.16);--line-soft:rgba(20,32,27,.08);
+  --warn:#9A3B1C;--ok:#1F5C43;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"Newsreader",Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+a{color:var(--field)}
+:focus-visible{outline:2px solid var(--field);outline-offset:2px;border-radius:2px}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:30;background:var(--ink);color:var(--paper);
+  padding:13px clamp(16px,3vw,28px);
+  display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;justify-content:space-between;
+}
+.brand h1{
+  font-family:var(--display);font-variation-settings:"wdth" 92;font-weight:700;
+  font-size:1.05rem;letter-spacing:-.01em;margin:0;text-transform:uppercase;
+}
+.status{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:7px;margin-top:3px;opacity:.75;
+}
+.status .dot{width:7px;height:7px;border-radius:50%;background:#8C9A92;flex:0 0 7px}
+.status.on .dot{background:var(--gold)}
+.status.on{opacity:1}
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+
+button,.filebtn{
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;
+  border:1px solid var(--line);background:transparent;color:inherit;
+  padding:9px 15px;border-radius:999px;cursor:pointer;
+  transition:background .18s ease,color .18s ease,border-color .18s ease,opacity .18s ease;
+}
+button:hover{border-color:var(--field);color:var(--field)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:disabled:hover{border-color:var(--line);color:inherit}
+.topbar button{border-color:rgba(236,239,230,.28)}
+.topbar button:hover:not(:disabled){background:rgba(236,239,230,.13);color:var(--paper);border-color:var(--paper)}
+.topbar button.on{background:rgba(236,239,230,.16);border-color:var(--paper)}
+button.primary{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.topbar button.primary:hover:not(:disabled){background:#F2B53C;border-color:#F2B53C;color:var(--ink)}
+button.tiny{padding:5px 10px;font-size:10px;letter-spacing:.08em}
+button.danger:hover{border-color:var(--warn);color:var(--warn)}
+
+/* ---------- connect drawer ---------- */
+.drawer{
+  background:var(--ink);color:var(--paper);
+  padding:0 clamp(16px,3vw,28px);max-height:0;overflow:hidden;
+  transition:max-height .3s cubic-bezier(.2,.7,.3,1),padding .3s ease;
+  border-top:1px solid rgba(236,239,230,.14);
+}
+.drawer.open{max-height:720px;padding:24px clamp(16px,3vw,28px) 28px}
+.drawer h2{
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--gold);margin:0 0 14px;
+}
+.drawer .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;max-width:900px}
+.drawer label{
+  display:block;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  opacity:.7;margin-bottom:6px;
+}
+.drawer input{
+  width:100%;font-family:var(--mono);font-size:13px;
+  background:rgba(236,239,230,.08);border:1px solid rgba(236,239,230,.2);color:var(--paper);
+  border-radius:4px;padding:9px 11px;
+}
+.drawer input:focus{outline:2px solid var(--gold);outline-offset:-1px}
+.drawer .note{font-size:14px;line-height:1.5;opacity:.75;max-width:70ch;margin:16px 0 0}
+.drawer .note code{font-family:var(--mono);font-size:12px;background:rgba(236,239,230,.12);padding:1px 5px;border-radius:3px}
+.drawer .drawer-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.sitefiles{margin-top:24px;padding-top:20px;border-top:1px solid rgba(236,239,230,.14)}
+.sitefiles .row2{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.drawer .filebtn{border-color:rgba(236,239,230,.3);color:var(--paper);display:inline-block}
+.drawer .filebtn:hover{background:rgba(236,239,230,.13)}
+.drawer button{border-color:rgba(236,239,230,.3);color:var(--paper)}
+.drawer button:hover:not(:disabled){background:rgba(236,239,230,.13);color:var(--paper);border-color:var(--paper)}
+.drawer button.primary{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.drawer button.primary:hover{background:#F2B53C;border-color:#F2B53C;color:var(--ink)}
+
+/* ---------- layout ---------- */
+.shell{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 58px)}
+@media (max-width:900px){.shell{grid-template-columns:1fr}}
+
+.rail{border-right:1px solid var(--line);padding:22px clamp(14px,2vw,20px) 60px;background:var(--panel)}
+@media (max-width:900px){.rail{border-right:0;border-bottom:1px solid var(--line)}}
+.rail h2{
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--field);margin:22px 0 10px;
+}
+.rail h2:first-child{margin-top:0}
+.rail .none{font-family:var(--mono);font-size:11px;color:var(--muted);opacity:.7;margin:0 0 4px}
+.item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:6px;cursor:pointer;transition:background .15s ease}
+.item:hover{background:rgba(20,32,27,.06)}
+.item.active{background:var(--field);color:var(--paper)}
+.item .t{flex:1;font-size:14.5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .pin{color:var(--gold);font-size:11px;flex:0 0 auto;line-height:1}
+.item .mv{font-family:var(--mono);font-size:11px;opacity:.5;border:0;background:none;padding:2px 4px;cursor:pointer;color:inherit;border-radius:3px}
+.item .mv:hover{opacity:1;background:rgba(255,255,255,.18);color:inherit;border-color:transparent}
+
+/* ---------- form ---------- */
+.editor{padding:26px clamp(16px,3.5vw,40px) 100px;max-width:840px}
+.editor.blank{display:flex;align-items:center;justify-content:center;color:var(--muted);min-height:50vh}
+.editor h2.title{
+  font-family:var(--display);font-variation-settings:"wdth" 90;font-weight:700;
+  font-size:1.5rem;letter-spacing:-.02em;margin:0 0 20px;text-transform:uppercase;
+}
+.field{margin-bottom:20px}
+.field label{
+  display:block;font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:7px;
+}
+.field .help{font-family:var(--mono);font-size:10.5px;color:var(--muted);opacity:.8;margin:6px 0 0;letter-spacing:.02em}
+input[type=text],input[type=url],input[type=password],select,textarea{
+  width:100%;font-family:var(--body);font-size:16px;color:var(--ink);
+  background:#fff;border:1px solid var(--line);border-radius:4px;padding:10px 12px;
+}
+select,input.mono{font-family:var(--mono);font-size:13px}
+textarea{min-height:150px;line-height:1.55;resize:vertical}
+textarea.short{min-height:78px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--field);outline-offset:-1px;border-color:var(--field)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:640px){.row{grid-template-columns:1fr}}
+.linkrow{display:grid;grid-template-columns:180px 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
+@media (max-width:640px){.linkrow{grid-template-columns:1fr}}
+
+.toggle{
+  display:inline-flex;align-items:center;gap:12px;cursor:pointer;
+  border:1px solid var(--line);border-radius:999px;padding:9px 16px 9px 12px;background:#fff;
+  transition:border-color .18s ease;
+}
+.toggle:hover{border-color:var(--field)}
+.toggle input{position:absolute;opacity:0;width:0;height:0}
+.toggle .track{width:38px;height:20px;border-radius:999px;background:rgba(20,32,27,.18);position:relative;flex:0 0 38px;transition:background .2s ease}
+.toggle .track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(20,32,27,.3);transition:transform .2s ease}
+.toggle .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.toggle input:checked + .track{background:var(--gold)}
+.toggle input:checked + .track::after{transform:translateX(18px)}
+.toggle input:checked ~ .lbl{color:var(--ink)}
+.toggle input:focus-visible + .track{outline:2px solid var(--field);outline-offset:2px}
+
+.filelist{list-style:none;padding:0;margin:0 0 12px}
+.filelist li{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;padding:8px 0;border-bottom:1px solid var(--line-soft)}
+.filelist li code{background:rgba(20,32,27,.06);padding:2px 6px;border-radius:3px;font-size:11px}
+.filelist li .grow{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.filelist li .flag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--warn)}
+.filelist li .flag.done{color:var(--ok)}
+.filebtn{display:inline-block;border-color:var(--field);color:var(--field)}
+.filebtn:hover{background:var(--field);color:var(--paper)}
+input[type=file]{display:none}
+
+.callout{border-left:3px solid var(--gold);background:rgba(223,162,44,.1);padding:14px 16px;margin:0 0 24px;font-size:15px}
+.callout strong{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:6px}
+.callout code{font-family:var(--mono);font-size:12px;background:rgba(20,32,27,.08);padding:1px 5px;border-radius:3px}
+.formfoot{display:flex;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:26px;padding-top:22px}
+
+/* ---------- headshot cropper ----------
+   The frame below uses exactly the same CSS maths as the portrait on
+   index.html, so what you line up here is what the site renders. */
+.crop{display:grid;grid-template-columns:auto minmax(0,1fr);gap:clamp(20px,4vw,36px);align-items:start}
+@media (max-width:720px){.crop{grid-template-columns:1fr}}
+.cropframe{
+  --hs-zoom:1;--hs-x:50%;--hs-y:50%;
+  position:relative;width:264px;max-width:100%;aspect-ratio:4/5;
+  border:1px solid var(--line);overflow:hidden;background:var(--field);
+  cursor:grab;touch-action:none;user-select:none;
+}
+.cropframe.grabbing{cursor:grabbing}
+.cropframe img{
+  position:absolute;left:50%;top:50%;
+  width:calc(100% * var(--hs-zoom));height:auto;
+  transform:translate(calc(-1 * var(--hs-x)),calc(-1 * var(--hs-y)));
+  pointer-events:none;-webkit-user-drag:none;
+}
+.cropframe .gold{position:absolute;left:0;bottom:0;width:30px;height:3px;background:var(--gold);z-index:3}
+.cropframe .guides{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .2s ease}
+.cropframe.grabbing .guides,.cropframe:hover .guides{opacity:1}
+.cropframe .guides i{position:absolute;background:rgba(255,255,255,.45)}
+.cropframe .guides i.v{top:0;bottom:0;width:1px}
+.cropframe .guides i.h{left:0;right:0;height:1px}
+.cropframe .ph{
+  position:absolute;inset:0;z-index:1;display:grid;place-items:center;text-align:center;padding:18px;
+  color:rgba(236,239,230,.9);font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;line-height:1.8;
+}
+.cropframe .ph b{display:block;font-family:var(--display);font-size:2.6rem;font-weight:800;letter-spacing:-.05em;margin-bottom:8px}
+.readout{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted);margin:12px 0 0}
+input[type=range]{width:100%;accent-color:var(--field);margin:0}
+.cropbtns{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;right:18px;bottom:18px;z-index:50;max-width:340px;
+  background:var(--ink);color:var(--paper);border-radius:8px;padding:14px 18px;
+  box-shadow:0 10px 34px rgba(20,32,27,.3);
+  font-family:var(--mono);font-size:12px;line-height:1.5;letter-spacing:.02em;
+  transform:translateY(14px);opacity:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease;
+}
+.toast.show{opacity:1;transform:none}
+.toast.bad{background:var(--warn)}
+.toast .head{color:var(--gold);font-size:10px;letter-spacing:.16em;text-transform:uppercase;display:block;margin-bottom:5px}
+.toast.bad .head{color:#F6D9CE}
+
+@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important}}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <h1>Site editor</h1>
+    <span class="status" id="status"><span class="dot"></span><span id="status-text">Offline, download to save</span></span>
+  </div>
+  <div class="actions">
+    <button id="connect-toggle">Connect</button>
+    <button id="add">Add entry</button>
+    <button id="headshot-btn">Headshot</button>
+    <button id="reload" disabled>Reload</button>
+    <button id="download">Download</button>
+    <button id="publish" class="primary" disabled>Publish</button>
+  </div>
+</div>
+
+<div class="drawer" id="drawer">
+  <h2>Publish straight to GitHub</h2>
+  <div class="cols">
+    <div><label for="gh-owner">Owner</label><input type="text" id="gh-owner" value="treychase" spellcheck="false"></div>
+    <div><label for="gh-repo">Repository</label><input type="text" id="gh-repo" value=".github.io" spellcheck="false"></div>
+    <div><label for="gh-branch">Branch</label><input type="text" id="gh-branch" value="main" spellcheck="false"></div>
+    <div><label for="gh-token">Access token</label><input type="password" id="gh-token" placeholder="github_pat_..." spellcheck="false" autocomplete="off"></div>
+  </div>
+
+  <p class="note">
+    Create a fine-grained personal access token on GitHub with access limited to this one repository
+    and a single permission: <code>Contents: Read and write</code>. The token stays in this tab's memory
+    only, so you enter it once per session and closing the tab forgets it.
+  </p>
+
+  <div class="drawer-actions">
+    <button id="gh-connect" class="primary">Connect</button>
+    <button id="gh-disconnect">Disconnect</button>
+  </div>
+
+  <div class="sitefiles">
+    <h2>Site files</h2>
+    <div class="row2">
+      <label class="filebtn" for="up-resume">Upload resume PDF</label>
+      <input type="file" id="up-resume" accept="application/pdf">
+      <button id="load-js">Load a projects.js</button>
+      <span class="note" style="margin:0">Resume is saved as files/trey_chase_resume.pdf. The headshot has its own tab in the top bar.</span>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="rail" id="rail"></aside>
+  <section class="editor blank" id="editor"><p>Pick an entry on the left, or add a new one.</p></section>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="jsloader" accept=".js">
+
+<script src="data/projects.js"></script>
+<script>
+(function () {
+  var SECTIONS = [
+    ['baseball', 'Baseball'], ['football', 'Football'], ['basketball', 'Basketball'],
+    ['hockey', 'Hockey'], ['health', 'Health'], ['articles', 'Articles'], ['blogs', 'Blogs']
+  ];
+  var DATA_PATH = 'data/projects.js';
+  var HS_FALLBACK = { src: 'files/headshot.jpg', zoom: 2, x: 55, y: 38 };
+
+  var SITE = window.SITE_DATA || {};
+  var data = Array.isArray(SITE.entries) ? SITE.entries.slice() : [];
+  var profile = SITE.profile ? JSON.parse(JSON.stringify(SITE.profile)) : {};
+
+  var current = -1;
+  var mode = 'entry';          /* 'entry' or 'headshot' */
+  var dirty = false;
+  var previewURL = '';         /* object URL for a photo picked this session */
+
+  var GH = { owner: '', repo: '', branch: 'main', token: '', on: false, sha: null };
+
+  var rail    = document.getElementById('rail');
+  var editor  = document.getElementById('editor');
+  var drawer  = document.getElementById('drawer');
+  var toastEl = document.getElementById('toast');
+  var statusEl = document.getElementById('status');
+  var statusText = document.getElementById('status-text');
+  var headshotBtn = document.getElementById('headshot-btn');
+
+  /* ---------------- helpers ---------------- */
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function blank() {
+    return { section: 'baseball', title: '', year: '', tags: [], status: '', pinned: false,
+             body: [''], stack: '', links: [], files: [] };
+  }
+  function safeName(n) {
+    return n.replace(/\s+/g, '-').replace(/[^\w.\-]/g, '').toLowerCase();
+  }
+  function num(v, fallback) { v = Number(v); return isFinite(v) ? v : fallback; }
+
+  /* the headshot block, created on demand so old data files still work */
+  function hs() {
+    if (!profile.headshot) profile.headshot = JSON.parse(JSON.stringify(HS_FALLBACK));
+    var h = profile.headshot;
+    h.src  = h.src || HS_FALLBACK.src;
+    h.zoom = num(h.zoom, HS_FALLBACK.zoom);
+    h.x    = num(h.x, HS_FALLBACK.x);
+    h.y    = num(h.y, HS_FALLBACK.y);
+    return h;
+  }
+
+  var toastTimer;
+  function toast(head, msg, bad) {
+    toastEl.className = 'toast show' + (bad ? ' bad' : '');
+    toastEl.innerHTML = '<span class="head">' + esc(head) + '</span>' + esc(msg);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.className = 'toast'; }, bad ? 7000 : 3600);
+  }
+
+  /* base64 that survives accents and emoji in the text */
+  function b64encode(str) {
+    var bytes = new TextEncoder().encode(str), bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function b64decode(b64) {
+    var bin = atob(b64.replace(/\s/g, ''));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  function fileToB64(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(String(r.result).split(',')[1]); };
+      r.onerror = function () { rej(new Error('Could not read ' + file.name)); };
+      r.readAsDataURL(file);
+    });
+  }
+
+  function indent(json) { return json.replace(/\n/g, '\n  '); }
+
+  /* Empty rows are stripped here, at write time, rather than in saveForm.
+     Filtering mid-edit deleted a link row the moment you clicked away from it
+     before typing the URL, and made "Add link" twice collapse into one row. */
+  function cleaned() {
+    return data.map(function (e) {
+      var c = JSON.parse(JSON.stringify(e));
+      c.links = (c.links || []).filter(function (l) { return l && String(l.url || '').trim(); });
+      c.files = (c.files || []).filter(function (f) { return f && String(f.path || '').trim(); });
+      return c;
+    });
+  }
+
+  function serialize() {
+    return '/* ---------------------------------------------------------------\n'
+         + '   projects.js  -  all site content lives here.\n'
+         + '   Written by admin.html on ' + new Date().toISOString().slice(0, 10) + '.\n'
+         + '--------------------------------------------------------------- */\n\n'
+         + 'window.SITE_DATA = {\n\n'
+         + '  profile: ' + indent(JSON.stringify(profile, null, 2)) + ',\n\n'
+         + '  entries: ' + indent(JSON.stringify(cleaned(), null, 2)) + '\n};\n';
+  }
+
+  function parseDataFile(text) {
+    var scope = {};
+    new Function('window', text)(scope);
+    var d = scope.SITE_DATA;
+    if (!d || !Array.isArray(d.entries)) throw new Error('shape');
+    return { entries: d.entries, profile: d.profile || {} };
+  }
+
+  /* ---------------- GitHub ---------------- */
+  function ghURL(path) {
+    return 'https://api.github.com/repos/' + GH.owner + '/' + GH.repo + '/contents/' + path;
+  }
+  function ghHeaders() {
+    return { 'Authorization': 'Bearer ' + GH.token,
+             'Accept': 'application/vnd.github+json',
+             'X-GitHub-Api-Version': '2022-11-28' };
+  }
+
+  function ghRead(path) {
+    return fetch(ghURL(path) + '?ref=' + encodeURIComponent(GH.branch) + '&t=' + Date.now(),
+                 { headers: ghHeaders() })
+      .then(function (r) {
+        if (r.status === 404) return null;
+        if (!r.ok) throw new Error('GitHub said ' + r.status + ' reading ' + path);
+        return r.json();
+      });
+  }
+
+  function ghWrite(path, contentB64, message, sha) {
+    var payload = { message: message, content: contentB64, branch: GH.branch };
+    if (sha) payload.sha = sha;
+    return fetch(ghURL(path), { method: 'PUT', headers: ghHeaders(), body: JSON.stringify(payload) })
+      .then(function (r) {
+        return r.json().then(function (j) {
+          if (!r.ok) {
+            if (r.status === 409 || r.status === 422) {
+              throw new Error('That file changed on GitHub since you loaded it. Press Reload, then publish again.');
+            }
+            throw new Error(j.message || ('GitHub said ' + r.status));
+          }
+          return j;
+        });
+      });
+  }
+
+  function setConnected(on) {
+    GH.on = on;
+    statusEl.className = 'status' + (on ? ' on' : '');
+    statusText.textContent = on
+      ? 'Connected to ' + GH.owner + '/' + GH.repo + ' on ' + GH.branch
+      : 'Offline, download to save';
+    document.getElementById('publish').disabled = !on;
+    document.getElementById('reload').disabled = !on;
+    draw();
+  }
+
+  function connect() {
+    GH.owner  = document.getElementById('gh-owner').value.trim();
+    GH.repo   = document.getElementById('gh-repo').value.trim();
+    GH.branch = document.getElementById('gh-branch').value.trim() || 'main';
+    GH.token  = document.getElementById('gh-token').value.trim();
+
+    if (!GH.owner || !GH.repo || !GH.token) {
+      toast('Missing details', 'Owner, repository and token are all required.', true);
+      return;
+    }
+
+    toast('Connecting', 'Reading ' + DATA_PATH + '.');
+    ghRead(DATA_PATH).then(function (file) {
+      if (!file) {
+        GH.sha = null;
+        setConnected(true);
+        toast('Connected', 'No projects.js in the repo yet. Publishing will create it.');
+        return;
+      }
+      var parsed = parseDataFile(b64decode(file.content));
+      data = parsed.entries;
+      profile = parsed.profile;
+      GH.sha = file.sha;
+      current = -1;
+      dirty = false;
+      setConnected(true);
+      drawRail(); draw();
+      drawer.classList.remove('open');
+      toast('Connected', 'Loaded ' + data.length + ' entries from GitHub.');
+    }).catch(function (err) {
+      setConnected(false);
+      var m = /401|403/.test(err.message)
+        ? 'Token rejected. Check it has Contents read and write on this repository.'
+        : err.message;
+      toast('Could not connect', m, true);
+    });
+  }
+
+  function publish() {
+    saveForm();
+    if (!GH.on) return;
+    document.getElementById('publish').disabled = true;
+    toast('Publishing', 'Committing ' + DATA_PATH + '.');
+    ghWrite(DATA_PATH, b64encode(serialize()),
+            'Update site content (' + data.length + ' entries)', GH.sha)
+      .then(function (res) {
+        GH.sha = res.content.sha;
+        dirty = false;
+        document.getElementById('publish').disabled = false;
+        toast('Published', 'Live in a minute or so once Pages rebuilds.');
+      })
+      .catch(function (err) {
+        document.getElementById('publish').disabled = false;
+        toast('Publish failed', err.message, true);
+      });
+  }
+
+  function reload() {
+    if (dirty && !confirm('Discard unsaved changes and reload from GitHub?')) return;
+    ghRead(DATA_PATH).then(function (file) {
+      if (!file) { toast('Nothing there', 'No projects.js in the repo yet.', true); return; }
+      var parsed = parseDataFile(b64decode(file.content));
+      data = parsed.entries;
+      profile = parsed.profile;
+      GH.sha = file.sha;
+      current = -1; dirty = false;
+      drawRail(); draw();
+      toast('Reloaded', data.length + ' entries from GitHub.');
+    }).catch(function (err) { toast('Reload failed', err.message, true); });
+  }
+
+  /* upload a real file into the repo and hand back its path */
+  function uploadTo(path, file) {
+    return fileToB64(file).then(function (b64) {
+      return ghRead(path).then(function (existing) {
+        return ghWrite(path, b64, 'Upload ' + path, existing ? existing.sha : null);
+      });
+    });
+  }
+
+  /* ---------------- rail ---------------- */
+  function drawRail() {
+    var html = '';
+    SECTIONS.forEach(function (s) {
+      var key = s[0];
+      var rows = data.map(function (e, i) { return { e: e, i: i }; })
+                     .filter(function (r) { return r.e.section === key; });
+      html += '<h2>' + s[1] + ' <span style="opacity:.5">' + rows.length + '</span></h2>';
+      if (!rows.length) { html += '<p class="none">empty</p>'; return; }
+      rows.forEach(function (r, n) {
+        html += '<div class="item' + (r.i === current && mode === 'entry' ? ' active' : '') + '" data-i="' + r.i + '">'
+              +   (r.e.pinned ? '<span class="pin" title="Pinned to front page">&#9679;</span>' : '')
+              +   '<span class="t">' + (esc(r.e.title) || '<em>Untitled</em>') + '</span>'
+              +   (n > 0 ? '<button class="mv" data-up="' + r.i + '" title="Move up">&#9650;</button>' : '')
+              +   (n < rows.length - 1 ? '<button class="mv" data-down="' + r.i + '" title="Move down">&#9660;</button>' : '')
+              + '</div>';
+      });
+    });
+    rail.innerHTML = html;
+  }
+
+  rail.addEventListener('click', function (ev) {
+    var up = ev.target.closest('[data-up]'), down = ev.target.closest('[data-down]');
+    if (up || down) {
+      ev.stopPropagation();
+      var i = parseInt((up || down).getAttribute(up ? 'data-up' : 'data-down'), 10);
+      var section = data[i].section, sibs = [];
+      data.forEach(function (e, k) { if (e.section === section) sibs.push(k); });
+      var swap = sibs[sibs.indexOf(i) + (up ? -1 : 1)];
+      if (swap === undefined) return;
+      var tmp = data[i]; data[i] = data[swap]; data[swap] = tmp;
+      if (current === i) current = swap; else if (current === swap) current = i;
+      dirty = true;
+      drawRail();
+      return;
+    }
+    var item = ev.target.closest('.item');
+    if (!item) return;
+    saveForm();
+    mode = 'entry';
+    current = parseInt(item.getAttribute('data-i'), 10);
+    drawRail(); draw();
+  });
+
+  /* ---------------- router ---------------- */
+  function draw() {
+    headshotBtn.className = mode === 'headshot' ? 'on' : '';
+    if (mode === 'headshot') drawHeadshot();
+    else drawForm();
+  }
+
+  function banner() {
+    return GH.on
+      ? '<div class="callout"><strong>Connected</strong>Edits commit straight to '
+        + esc(GH.owner + '/' + GH.repo) + ' when you press Publish, and attached files upload as you choose them.</div>'
+      : '<div class="callout"><strong>Working offline</strong>Press Connect in the top bar to publish directly, '
+        + 'or keep going and use Download to save <code>projects.js</code> yourself.</div>';
+  }
+
+  /* ---------------- headshot cropper ---------------- */
+  function drawHeadshot() {
+    var h = hs();
+    editor.className = 'editor';
+    editor.innerHTML =
+      '<h2 class="title">Headshot</h2>'
+    + banner()
+    + '<div class="crop">'
+    +   '<div>'
+    +     '<div class="cropframe" id="cropframe">'
+    +       '<div class="ph" id="crop-ph"><span><b>TC</b>No photo loaded<br>Choose one to begin</span></div>'
+    +       '<img id="crop-img" alt="">'
+    +       '<div class="guides"><i class="v" style="left:33.33%"></i><i class="v" style="left:66.66%"></i>'
+    +         '<i class="h" style="top:33.33%"></i><i class="h" style="top:66.66%"></i></div>'
+    +       '<span class="gold"></span>'
+    +     '</div>'
+    +     '<p class="readout" id="crop-readout"></p>'
+    +   '</div>'
+    +   '<div>'
+    +     '<div class="field"><label for="crop-zoom">Zoom</label>'
+    +       '<input type="range" id="crop-zoom" min="1" max="6" step="0.01" value="' + h.zoom + '">'
+    +       '<p class="help">Drag inside the frame to move the photo. The frame is the exact shape and size ratio the site uses.</p></div>'
+    +     '<div class="field"><label for="crop-src">Image path in this repo</label>'
+    +       '<input type="text" class="mono" id="crop-src" value="' + esc(h.src) + '">'
+    +       '<p class="help">Relative to the site root, for example files/headshot.jpg</p></div>'
+    +     '<div class="field">'
+    +       '<label class="filebtn" for="crop-file">' + (GH.on ? 'Upload a photo' : 'Choose a photo') + '</label>'
+    +       '<input type="file" id="crop-file" accept="image/*">'
+    +       '<p class="help">' + (GH.on
+              ? 'Uploads into the repo and sets the path above. Publish afterwards to save the crop.'
+              : 'Previews here only. Copy the file into the repo yourself, or connect to upload it.')
+    +       '</p></div>'
+    +     '<div class="cropbtns">'
+    +       '<button class="tiny" id="crop-center">Centre</button>'
+    +       '<button class="tiny" id="crop-reset">Reset to default</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>';
+
+    var frame = document.getElementById('cropframe');
+    var img   = document.getElementById('crop-img');
+    var ph    = document.getElementById('crop-ph');
+    var zoomEl = document.getElementById('crop-zoom');
+    var readout = document.getElementById('crop-readout');
+
+    function apply() {
+      var c = hs();
+      frame.style.setProperty('--hs-zoom', c.zoom);
+      frame.style.setProperty('--hs-x', c.x + '%');
+      frame.style.setProperty('--hs-y', c.y + '%');
+      zoomEl.value = c.zoom;
+      readout.textContent = img.naturalWidth
+        ? 'zoom ' + c.zoom.toFixed(2) + '   x ' + c.x.toFixed(1) + '%   y ' + c.y.toFixed(1) + '%'
+        : 'No image loaded, so the site will show the TC monogram instead.';
+    }
+
+    /* keep the crop window inside the photo, whatever its shape */
+    function clamp() {
+      var c = hs();
+      var natW = img.naturalWidth, natH = img.naturalHeight;
+      if (!natW || !natH) return;
+      var fw = frame.clientWidth, fh = frame.clientHeight;
+      var minZoom = Math.max(1, (fh / fw) * (natW / natH));
+      c.zoom = Math.max(minZoom, Math.min(6, c.zoom));
+      var imgW = fw * c.zoom, imgH = imgW * natH / natW;
+      var visX = Math.min(1, fw / imgW) * 100;
+      var visY = Math.min(1, fh / imgH) * 100;
+      c.x = Math.max(visX / 2, Math.min(100 - visX / 2, c.x));
+      c.y = Math.max(visY / 2, Math.min(100 - visY / 2, c.y));
+    }
+
+    img.onload = function () {
+      ph.style.display = 'none';
+      clamp(); apply();
+    };
+    img.onerror = function () {
+      ph.style.display = '';
+      img.removeAttribute('src');
+      apply();
+    };
+    var showing = previewURL || h.src;
+    if (showing) img.src = showing; else apply();
+    apply();
+
+    frame.addEventListener('pointerdown', function (ev) {
+      if (!img.naturalWidth) return;
+      ev.preventDefault();
+      frame.setPointerCapture(ev.pointerId);
+      frame.classList.add('grabbing');
+      var c = hs();
+      var sx = ev.clientX, sy = ev.clientY, x0 = c.x, y0 = c.y;
+      var fw = frame.clientWidth;
+      var imgW = fw * c.zoom, imgH = imgW * img.naturalHeight / img.naturalWidth;
+
+      function move(e) {
+        var cc = hs();
+        cc.x = x0 - (e.clientX - sx) / imgW * 100;
+        cc.y = y0 - (e.clientY - sy) / imgH * 100;
+        clamp(); apply();
+        dirty = true;
+      }
+      function up() {
+        frame.classList.remove('grabbing');
+        frame.removeEventListener('pointermove', move);
+        frame.removeEventListener('pointerup', up);
+        frame.removeEventListener('pointercancel', up);
+      }
+      frame.addEventListener('pointermove', move);
+      frame.addEventListener('pointerup', up);
+      frame.addEventListener('pointercancel', up);
+    });
+
+    zoomEl.addEventListener('input', function () {
+      hs().zoom = Number(this.value);
+      clamp(); apply();
+      dirty = true;
+    });
+
+    document.getElementById('crop-src').addEventListener('input', function () {
+      hs().src = this.value.trim();
+      dirty = true;
+      if (!previewURL) { ph.style.display = ''; img.src = hs().src; }
+    });
+
+    document.getElementById('crop-center').addEventListener('click', function () {
+      var c = hs(); c.x = 50; c.y = 50; clamp(); apply(); dirty = true;
+    });
+
+    document.getElementById('crop-reset').addEventListener('click', function () {
+      var c = hs();
+      c.zoom = HS_FALLBACK.zoom; c.x = HS_FALLBACK.x; c.y = HS_FALLBACK.y;
+      clamp(); apply(); dirty = true;
+      toast('Reset', 'Back to the default crop for the NBA intern day photo.');
+    });
+
+    document.getElementById('crop-file').addEventListener('change', function () {
+      var file = this.files[0];
+      this.value = '';
+      if (!file) return;
+
+      if (previewURL) URL.revokeObjectURL(previewURL);
+      previewURL = URL.createObjectURL(file);
+
+      var ext = (file.name.match(/\.[a-z0-9]+$/i) || ['.jpg'])[0].toLowerCase();
+      var path = 'files/headshot' + ext;
+      hs().src = path;
+      document.getElementById('crop-src').value = path;
+      dirty = true;
+
+      ph.style.display = '';
+      img.src = previewURL;
+
+      if (!GH.on) {
+        toast('Previewing', 'Copy the file to ' + path + ' yourself, or connect to upload it.');
+        return;
+      }
+      toast('Uploading', 'Sending the photo to ' + path + '.');
+      uploadTo(path, file)
+        .then(function () { toast('Uploaded', 'Photo is in the repo. Publish to save the crop.'); })
+        .catch(function (err) { toast('Upload failed', err.message, true); });
+    });
+  }
+
+  /* ---------------- entry form ---------------- */
+  function drawForm() {
+    if (current < 0 || !data[current]) {
+      editor.className = 'editor blank';
+      editor.innerHTML = '<p>Pick an entry on the left, or add a new one.</p>';
+      return;
+    }
+    var e = data[current];
+    editor.className = 'editor';
+
+    var opts = SECTIONS.map(function (s) {
+      return '<option value="' + s[0] + '"' + (e.section === s[0] ? ' selected' : '') + '>' + s[1] + '</option>';
+    }).join('');
+    var statuses = [['', 'None'], ['in-progress', 'In progress'], ['shelved', 'Shelved']].map(function (s) {
+      return '<option value="' + s[0] + '"' + (e.status === s[0] ? ' selected' : '') + '>' + s[1] + '</option>';
+    }).join('');
+    var links = (e.links || []).map(function (l, i) {
+      return '<div class="linkrow">'
+           + '<input type="text" class="mono" data-link-label="' + i + '" value="' + esc(l.label) + '" placeholder="View code">'
+           + '<input type="url" class="mono" data-link-url="' + i + '" value="' + esc(l.url) + '" placeholder="https://">'
+           + '<button class="tiny danger" data-link-del="' + i + '">Remove</button></div>';
+    }).join('');
+    var files = (e.files || []).map(function (f, i) {
+      var flag = f.uploaded
+        ? '<span class="flag done">On GitHub</span>'
+        : '<span class="flag">Copy manually</span>';
+      return '<li><span class="grow">' + esc(f.name) + '</span><code>' + esc(f.path) + '</code>'
+           + flag + '<button class="tiny danger" data-file-del="' + i + '">Remove</button></li>';
+    }).join('');
+
+    editor.innerHTML = banner()
+    + '<div class="row">'
+    +   '<div class="field"><label for="f-section">Section</label><select id="f-section">' + opts + '</select></div>'
+    +   '<div class="field"><label for="f-status">Status</label><select id="f-status">' + statuses + '</select></div>'
+    + '</div>'
+    + '<div class="field"><label for="f-title">Title</label>'
+    +   '<input type="text" id="f-title" value="' + esc(e.title) + '" placeholder="What the project is called"></div>'
+    + '<div class="field"><label>Front page</label>'
+    +   '<label class="toggle"><input type="checkbox" id="f-pinned"' + (e.pinned ? ' checked' : '') + '>'
+    +   '<span class="track"></span><span class="lbl">Pin to front page</span></label>'
+    +   '<p class="help">Pinned entries appear in the Start here block above the category squares.</p></div>'
+    + '<div class="row">'
+    +   '<div class="field"><label for="f-year">Year</label>'
+    +     '<input type="text" class="mono" id="f-year" value="' + esc(e.year) + '" placeholder="2026, or 2024 to 2026"></div>'
+    +   '<div class="field"><label for="f-tags">Labels</label>'
+    +     '<textarea class="mono short" id="f-tags" placeholder="Front office tool">'
+    +     esc((e.tags || []).join('\n')) + '</textarea>'
+    +     '<p class="help">One per line. Shown after the year.</p></div>'
+    + '</div>'
+    + '<div class="field"><label for="f-body">Description</label>'
+    +   '<textarea id="f-body" placeholder="What it does and why it exists. Leave a blank line between paragraphs.">'
+    +   esc((e.body || []).join('\n\n')) + '</textarea>'
+    +   '<p class="help">Blank line starts a new paragraph.</p></div>'
+    + '<div class="field"><label for="f-stack">Stack</label>'
+    +   '<input type="text" class="mono" id="f-stack" value="' + esc(e.stack) + '" placeholder="Python, PyMC, pandas"></div>'
+    + '<div class="field"><label>Links</label>' + links
+    +   '<button class="tiny" id="link-add">Add link</button></div>'
+    + '<div class="field"><label>Attached files</label>'
+    +   '<ul class="filelist">' + files + '</ul>'
+    +   '<label class="filebtn" for="f-files">' + (GH.on ? 'Upload files' : 'Choose files') + '</label>'
+    +   '<input type="file" id="f-files" multiple>'
+    +   '<p class="help">' + (GH.on
+          ? 'Uploads straight into files/ on GitHub and links the card to it.'
+          : 'Records the name and points at files/&lt;name&gt;. Copy the real file in yourself, or connect to upload.')
+    +   '</p></div>'
+    + '<div class="formfoot"><button id="dup">Duplicate</button><button id="del" class="danger">Delete entry</button></div>';
+
+    document.getElementById('f-title').addEventListener('input', function () {
+      data[current].title = this.value; dirty = true; drawRail();
+    });
+    document.getElementById('f-section').addEventListener('change', function () { saveForm(); drawRail(); });
+    document.getElementById('f-pinned').addEventListener('change', function () {
+      data[current].pinned = this.checked; dirty = true; drawRail();
+    });
+    document.getElementById('link-add').addEventListener('click', function () {
+      saveForm();
+      var e2 = data[current];
+      (e2.links = e2.links || []).push({ label: '', url: '' });
+      draw();
+    });
+
+    document.getElementById('f-files').addEventListener('change', function () {
+      saveForm();
+      var picked = Array.prototype.slice.call(this.files);
+      var owner = current;
+
+      picked.forEach(function (file) {
+        (data[owner].files = data[owner].files || [])
+          .push({ name: file.name, path: 'files/' + safeName(file.name), uploaded: false });
+      });
+      dirty = true;
+      draw();
+
+      if (!GH.on) {
+        toast('Recorded', 'Copy ' + picked.length + ' file' + (picked.length === 1 ? '' : 's') + ' into files/ yourself.');
+        return;
+      }
+
+      toast('Uploading', picked.length + ' file' + (picked.length === 1 ? '' : 's') + ' to GitHub.');
+      picked.reduce(function (chain, file) {
+        return chain.then(function () {
+          var path = 'files/' + safeName(file.name);
+          return uploadTo(path, file).then(function () {
+            (data[owner].files || []).forEach(function (f) { if (f.path === path) f.uploaded = true; });
+            if (current === owner && mode === 'entry') draw();
+          });
+        });
+      }, Promise.resolve())
+        .then(function () { toast('Uploaded', 'Publish to save the card that points at them.'); })
+        .catch(function (err) { toast('Upload failed', err.message, true); });
+    });
+
+    document.getElementById('dup').addEventListener('click', function () {
+      saveForm();
+      var copy = JSON.parse(JSON.stringify(data[current]));
+      copy.title = copy.title + ' (copy)';
+      copy.pinned = false;
+      data.splice(current + 1, 0, copy);
+      current += 1; dirty = true;
+      drawRail(); draw();
+    });
+
+    document.getElementById('del').addEventListener('click', function () {
+      if (!confirm('Delete "' + (data[current].title || 'this entry') + '"? This cannot be undone.')) return;
+      data.splice(current, 1);
+      current = -1; dirty = true;
+      drawRail(); draw();
+    });
+  }
+
+  /* One delegated listener for the whole editor pane. Registering this per
+     redraw, as an earlier version did, meant the first click anywhere in the
+     pane consumed it and the Remove buttons quietly stopped working. */
+  editor.addEventListener('click', function (ev) {
+    if (mode !== 'entry' || current < 0 || !data[current]) return;
+    var d = ev.target.closest('[data-link-del]');
+    if (d) {
+      saveForm();
+      data[current].links.splice(parseInt(d.getAttribute('data-link-del'), 10), 1);
+      dirty = true; draw();
+      return;
+    }
+    var f = ev.target.closest('[data-file-del]');
+    if (f) {
+      saveForm();
+      data[current].files.splice(parseInt(f.getAttribute('data-file-del'), 10), 1);
+      dirty = true; draw();
+    }
+  });
+
+  function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+
+  function saveForm() {
+    if (mode !== 'entry' || current < 0 || !data[current] || !document.getElementById('f-title')) return;
+    var e = data[current];
+    e.section = val('f-section');
+    e.status  = val('f-status');
+    var pin = document.getElementById('f-pinned');
+    e.pinned  = pin ? pin.checked : !!e.pinned;
+    e.title   = val('f-title').trim();
+    e.year    = val('f-year').trim();
+    e.tags    = val('f-tags').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    e.body    = val('f-body').split(/\n\s*\n/).map(function (s) { return s.trim().replace(/\s*\n\s*/g, ' '); }).filter(Boolean);
+    e.stack   = val('f-stack').trim();
+    e.links   = (e.links || []).map(function (l, i) {
+      var lab = document.querySelector('[data-link-label="' + i + '"]');
+      var url = document.querySelector('[data-link-url="' + i + '"]');
+      return { label: lab ? lab.value.trim() : l.label, url: url ? url.value.trim() : l.url };
+    });
+    dirty = true;
+  }
+
+  /* ---------------- toolbar ---------------- */
+  document.getElementById('connect-toggle').addEventListener('click', function () {
+    drawer.classList.toggle('open');
+    if (drawer.classList.contains('open')) document.getElementById('gh-token').focus();
+  });
+  document.getElementById('gh-connect').addEventListener('click', connect);
+  document.getElementById('gh-disconnect').addEventListener('click', function () {
+    GH.token = ''; GH.sha = null;
+    document.getElementById('gh-token').value = '';
+    setConnected(false);
+    toast('Disconnected', 'Token cleared from this tab.');
+  });
+  document.getElementById('publish').addEventListener('click', publish);
+  document.getElementById('reload').addEventListener('click', reload);
+
+  headshotBtn.addEventListener('click', function () {
+    saveForm();
+    mode = mode === 'headshot' ? 'entry' : 'headshot';
+    drawRail(); draw();
+  });
+
+  document.getElementById('add').addEventListener('click', function () {
+    saveForm();
+    mode = 'entry';
+    data.push(blank());
+    current = data.length - 1;
+    dirty = true;
+    drawRail(); draw();
+    var t = document.getElementById('f-title'); if (t) t.focus();
+  });
+
+  document.getElementById('download').addEventListener('click', function () {
+    saveForm();
+    var blob = new Blob([serialize()], { type: 'text/javascript' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'projects.js';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    toast('Downloaded', 'Replace data/projects.js with it and commit.');
+  });
+
+  /* site-wide files */
+  function wireSiteFile(inputId, target, label) {
+    document.getElementById(inputId).addEventListener('change', function () {
+      var file = this.files[0];
+      this.value = '';
+      if (!file) return;
+      if (!GH.on) { toast('Not connected', 'Connect first, or copy the file to ' + target + ' yourself.', true); return; }
+      toast('Uploading', label + '.');
+      uploadTo(target, file)
+        .then(function () { toast('Uploaded', label + ' is live once Pages rebuilds.'); })
+        .catch(function (err) { toast('Upload failed', err.message, true); });
+    });
+  }
+  wireSiteFile('up-resume', 'files/trey_chase_resume.pdf', 'Resume PDF');
+
+  /* load a projects.js from disk */
+  var loader = document.getElementById('jsloader');
+  document.getElementById('load-js').addEventListener('click', function () { loader.click(); });
+  loader.addEventListener('change', function () {
+    var file = this.files[0];
+    this.value = '';
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = parseDataFile(String(reader.result));
+        data = parsed.entries;
+        profile = parsed.profile;
+        current = -1; dirty = false;
+        drawRail(); draw();
+        toast('Loaded', data.length + ' entries from that file.');
+      } catch (err) {
+        toast('Bad file', 'That is not a projects.js this editor can read.', true);
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  window.addEventListener('beforeunload', function (ev) {
+    saveForm();
+    if (!dirty) return;
+    ev.preventDefault();
+    ev.returnValue = '';
+  });
+
+  drawRail();
+  draw();
+})();
+</script>
+
+</body>
+</html>
