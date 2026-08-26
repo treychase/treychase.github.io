@@ -310,6 +310,21 @@ h2.section{
 .card p{margin:0 0 12px;font-size:16px;line-height:1.55}
 .card p:last-of-type{margin-bottom:0}
 
+/* A card carries one short line; the rest of the description opens under it,
+   so a category reads as a list rather than as a wall of prose. */
+.card .full p:last-child{margin-bottom:0}
+.card .more{
+  appearance:none;background:none;border:0;padding:0;cursor:pointer;
+  margin:12px 0 0;
+  font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--field);
+  display:inline-flex;align-items:center;gap:7px;
+  transition:color .18s ease;
+}
+.card .more:hover{color:var(--field-deep)}
+.card .more svg{width:11px;height:11px;transition:transform .22s ease}
+.card .more[aria-expanded="true"] svg{transform:rotate(180deg)}
+
 /* ---------- statline shared by cards and entries ---------- */
 .statline,
 .card .statline,
@@ -468,6 +483,9 @@ footer a:hover{color:var(--field);border-color:var(--field)}
   .portrait{order:0;max-width:none}
   .panel,.view{animation:none}
   .card,.entry,.role,.tile,.empty,.res-block{break-inside:avoid;page-break-inside:avoid}
+  /* on paper there is nothing to click, so print the whole description */
+  .card .full,.card .full[hidden]{display:block}
+  .card .more{display:none}
   .featured,.grid{break-inside:auto}
   h2.section,.featured-head{break-after:avoid}
   .tile{border-color:rgba(20,32,27,.3)}
@@ -853,13 +871,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
       '<path d="M8 82h84"/>'
     + '<path d="M8 62h84" stroke-dasharray="3 5" opacity=".7"/>'
     + '<path d="M10 72 L26 54 L38 64 L52 26 L64 50 L78 40 L92 46"/>'
-    + '<circle cx="26" cy="54" r="3.5"/><circle cx="52" cy="26" r="3.5"/><circle cx="78" cy="40" r="3.5"/>',
-    teaching:
-      '<rect x="8" y="16" width="84" height="60"/>'
-    + '<path d="M8 30h84"/>'
-    + '<path d="M22 41 32 51 22 61"/>'
-    + '<path d="M40 63h24"/>'
-    + '<path d="M50 76v10"/><path d="M34 86h32"/>'
+    + '<circle cx="26" cy="54" r="3.5"/><circle cx="52" cy="26" r="3.5"/><circle cx="78" cy="40" r="3.5"/>'
   };
 
   var CATEGORIES = [
@@ -867,14 +879,12 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     { key: 'football',   name: 'Football',   blurb: 'Nothing yet',                    note: 'Positional and play-level work' },
     { key: 'basketball', name: 'Basketball', blurb: 'Projection, valuation',          note: 'Projection, valuation, and the data behind both' },
     { key: 'hockey',     name: 'Hockey',     blurb: 'Skater tracking',                note: 'Skating and positional tracking' },
-    { key: 'health',     name: 'Health',     blurb: 'Biomechanics, availability',     note: 'Biomechanics, availability, and the systems that keep the data honest' },
-    { key: 'teaching',   name: 'Teaching',   blurb: 'Computing bootcamp',             note: 'Materials for the computing side of statistics work' }
+    { key: 'health',     name: 'Health',     blurb: 'Biomechanics, availability',     note: 'Biomechanics, availability, and the systems that keep the data honest' }
   ];
 
   var LABELS = {
     baseball: 'Baseball', football: 'Football', basketball: 'Basketball',
-    hockey: 'Hockey', health: 'Health', teaching: 'Teaching',
-    articles: 'Article', blogs: 'Blog'
+    hockey: 'Hockey', health: 'Health', articles: 'Article', blogs: 'Blog'
   };
 
   var EMPTY = {
@@ -883,7 +893,6 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     basketball: ['Nothing on the board yet', 'Basketball work will be listed here as it is finished.'],
     hockey:     ['Nothing on the board yet', 'Hockey work will be listed here as it is finished.'],
     health:     ['Nothing here yet', 'Player health work will be listed here as it is finished.'],
-    teaching:   ['Nothing here yet', 'Teaching material and computing resources will be listed here as they are added.'],
     articles:   ['First piece is being written', 'Published articles will be listed here, most recent first. Until then, the project write-ups are the closest thing to a paper trail.'],
     blogs:      ['Nothing posted yet', 'Short posts on what broke, what the data actually looked like, and what changed the model will go here.']
   };
@@ -928,9 +937,32 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     return out;
   }
 
+  var CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" '
+    + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
+  /* The card shows `summary`, one line written for exactly this spot, and the
+     full description opens in its place. Entries with no summary fall back to
+     their first paragraph, and the toggle only appears when something is
+     actually hidden behind it. */
+  function prose(e) {
+    var body = (e.body || []).filter(Boolean);
+    var lead = e.summary || body[0] || '';
+    if (!lead) return '';
+    var rest = e.summary ? body : body.slice(1);
+    var html = '<p class="lead">' + esc(lead) + '</p>';
+    if (!rest.length) return html;
+    return html
+      + '<div class="full" hidden>'
+      +   rest.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('')
+      + '</div>'
+      + '<button class="more" type="button" aria-expanded="false">'
+      +   '<span>Read more</span>' + CHEVRON
+      + '</button>';
+  }
+
   function cardHTML(e, showBadge) {
     var html = '<article class="card"><h3>' + esc(e.title) + '</h3>' + statline(e);
-    (e.body || []).forEach(function (p) { if (p) html += '<p>' + esc(p) + '</p>'; });
+    html += prose(e);
     if (e.stack) html += '<p class="stack">' + esc(e.stack) + '</p>';
     html += extras(e);
     if (showBadge && LABELS[e.section]) {
@@ -946,7 +978,10 @@ footer a:hover{color:var(--field);border-color:var(--field)}
       ? '<a class="entry" href="' + esc(href) + '" target="_blank" rel="noopener">'
       : '<div class="entry">';
     var html = open + statline(e) + '<h3>' + esc(e.title) + '</h3>';
-    (e.body || []).forEach(function (p) { if (p) html += '<p>' + esc(p) + '</p>'; });
+    /* no toggle here: the whole row is a link, and a button inside one is
+       neither valid nor clickable in the way anyone expects */
+    var lead = e.summary || (e.body || []).filter(Boolean)[0] || '';
+    if (lead) html += '<p>' + esc(lead) + '</p>';
     return html + extras(e) + '</' + tag + '>';
   }
 
@@ -1021,6 +1056,22 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     var t = prev && tiles.querySelector('[data-cat="' + prev + '"]');
     if (t) t.focus();
   }
+
+  /* delegated, so it keeps working for cards drawn after this runs */
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest && ev.target.closest('.more');
+    if (!btn) return;
+    var card = btn.closest('.card');
+    if (!card) return;
+    var open = btn.getAttribute('aria-expanded') === 'true';
+    var lead = card.querySelector('.lead');
+    var full = card.querySelector('.full');
+    if (lead) lead.hidden = !open;
+    if (full) full.hidden = open;
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    var label = btn.querySelector('span');
+    if (label) label.textContent = open ? 'Read more' : 'Show less';
+  });
 
   tiles.addEventListener('click', function (ev) {
     var t = ev.target.closest('.tile');
