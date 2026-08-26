@@ -770,7 +770,7 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     var links = (e.links || []).map(function (l, i) {
       return '<div class="linkrow">'
            + '<input type="text" class="mono" data-link-label="' + i + '" value="' + esc(l.label) + '" placeholder="View code">'
-           + '<input type="url" class="mono" data-link-url="' + i + '" value="' + esc(l.url) + '" placeholder="https://">'
+           + '<input type="text" class="mono" data-link-url="' + i + '" value="' + esc(l.url) + '" placeholder="https://  or  projects/report.html">'
            + '<button class="tiny danger" data-link-del="' + i + '">Remove</button></div>';
     }).join('');
     var files = (e.files || []).map(function (f, i) {
@@ -807,7 +807,9 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     + '<div class="field"><label for="f-stack">Stack</label>'
     +   '<input type="text" class="mono" id="f-stack" value="' + esc(e.stack) + '" placeholder="Python, PyMC, pandas"></div>'
     + '<div class="field"><label>Links</label>' + links
-    +   '<button class="tiny" id="link-add">Add link</button></div>'
+    +   '<button class="tiny" id="link-add">Add link</button>'
+    +   '<p class="help">A full URL for GitHub or anything external, or a path '
+    +   'inside this repo such as projects/report.html for a rendered notebook.</p></div>'
     + '<div class="field"><label>Attached files</label>'
     +   '<ul class="filelist">' + files + '</ul>'
     +   '<label class="filebtn" for="f-files">' + (GH.on ? 'Upload files' : 'Choose files') + '</label>'

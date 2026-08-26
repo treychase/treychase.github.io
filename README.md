@@ -42,6 +42,25 @@ It currently points at `files/trey_chase_resume.docx`, the Word file in the
 repo. A PDF is the better thing to hand someone from a portfolio site: export
 one and upload it, and the button relabels itself with no other change.
 
+## School logos
+
+The degrees under the name each have a logo slot, set in `profile.education`
+in `data/projects.js`:
+
+```js
+{ degree: "M.S. Statistical Science", school: "Duke University",
+  logo: "files/duke.svg", initials: "D", color: "#012169" }
+```
+
+Until a file exists at `logo`, or if it fails to load, the site draws `initials`
+as a monogram in `color`, so the row never shows a broken image. The browser
+does log a harmless 404 for the missing file while the path is set and the file
+is not there; clearing `logo` silences it if you would rather wait. Save the
+official artwork as `files/duke.svg` and `files/calpoly.svg` and it appears with
+no other change. Both universities publish their marks with usage terms
+attached — Duke through its brand guide, Cal Poly through University Marketing —
+so download them from there rather than pulling a copy off a search result.
+
 ## The headshot
 
 Press *Headshot* in the editor's top bar. The frame shown is the exact shape
@@ -64,6 +83,60 @@ in at `files/headshot.jpg` and it is already framed correctly.
 
 Until an image exists at that path the site falls back to a green `TC`
 monogram, so nothing looks broken while the file is missing.
+
+## Adding a project
+
+Every entry on the Projects, Articles and Blogs tabs is a row in
+`data/projects.js`, added through *Add entry* in the editor. Two things
+usually hang off an entry.
+
+### Linking a GitHub repository
+
+Add a link on the entry with the repository URL:
+
+| Label | URL |
+| --- | --- |
+| `View code` | `https://github.com/treychase/nba-salary-model` |
+
+Links with a full URL open in a new tab. The first link on an Articles or Blogs
+entry also becomes the headline link for that row.
+
+### Publishing a rendered Quarto document
+
+Render the `.qmd` to a **single self-contained HTML file**, so there is no
+sidecar `_files/` directory to keep in sync:
+
+```bash
+quarto render analysis.qmd --to html -M embed-resources:true
+```
+
+Drop the result into `projects/` in this repo under a readable name, commit it,
+and point a link at that path:
+
+```
+projects/stuff-plus.html
+```
+
+| Label | URL |
+| --- | --- |
+| `Read the report` | `projects/stuff-plus.html` |
+
+The link field takes a repo-relative path as happily as a full URL. The page is
+served straight from Pages at `https://treychase.github.io/projects/stuff-plus.html`,
+so the report keeps working even if someone opens it on its own.
+
+If you would rather not embed everything, `quarto render` without
+`embed-resources` produces `analysis.html` plus an `analysis_files/` folder;
+copy both into `projects/` and keep them together. `.nojekyll` in the repo root
+is what stops GitHub Pages from discarding folders whose names begin with an
+underscore, which is exactly what Quarto generates, so leave that file in place.
+
+The alternative is to publish the document from its own repository with
+`quarto publish gh-pages` and link out to it with a full URL. That keeps this
+repository smaller, at the cost of the report living at a different address.
+
+Notebooks work the same way: `jupyter nbconvert --to html --embed-images
+notebook.ipynb` produces a single file for `projects/`.
 
 ## Publishing on GitHub Pages
 
