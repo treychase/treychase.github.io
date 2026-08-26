@@ -1,12 +1,12 @@
-"""Build the standalone skater-tracking dashboard from the AVS tracking feed.
+"""Build the standalone skater-tracking dashboard from a player-tracking feed.
 
-Reads one period of one game out of the `games/*.parquet` files in
-treychase/avs_take_home and writes a single self-contained HTML page that
-replays it: skaters and the puck moving in real time on a regulation rink,
-with play/pause, a scrub bar, playback speed, and optional velocity arrows.
+Reads one period of one game out of the `games/*.parquet` files in the tracking
+analysis repo and writes a single self-contained HTML page that replays it:
+skaters and the puck moving in real time on a regulation rink, with play/pause,
+a scrub bar, playback speed, and optional velocity arrows.
 
     python tools/build_skater_dashboard.py \
-        --games-dir ../avs_take_home/games \
+        --games-dir <tracking repo>/games \
         --out projects/skater-tracking-dashboard.html
 
 Nothing is fetched at view time. Positions are embedded as integers in tenths
@@ -23,8 +23,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# The rink, matching viz_functions.py in the analysis repo so the web rink and
-# the matplotlib one are the same rink.
+# The rink, matching viz_functions.py in the tracking analysis repo so the web
+# rink and the matplotlib one are the same rink.
 RINK = {
     "length": 200.0, "width": 85.0, "corner": 28.0,
     "blueLine": 25.0, "goalLine": 89.0, "circleR": 15.0,
@@ -137,7 +137,8 @@ def render(payload: dict, template: Path) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--games-dir", type=Path, default=Path("../avs_take_home/games"))
+    ap.add_argument("--games-dir", type=Path, required=True,
+                    help="the games/ directory of the tracking analysis repo")
     ap.add_argument("--game", type=int, default=1)
     ap.add_argument("--period", type=int, default=1)
     ap.add_argument("--stride", type=int, default=2,

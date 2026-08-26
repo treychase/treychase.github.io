@@ -156,6 +156,11 @@ to match the site and reached from its project card:
 | `projects/driveline-pitching.html` | OpenBiomechanics pitching dashboard |
 | `projects/driveline-hitting.html` | Driveline hitting dashboard |
 
+Two more pages in `projects/` are converted notebooks rather than write-ups:
+`nba-salary-model.html` and `velocity-projection.html`. Both were produced with
+`jupyter nbconvert --to html --embed-images`, then edited the same way — see
+the note under *Publishing a rendered Quarto document* below.
+
 ## The hosted dashboards
 
 Three files in `projects/` are not write-ups but the dashboards themselves,
@@ -166,17 +171,17 @@ loads immediately rather than waiting on a Space to wake up:
 | --- | --- | --- |
 | `projects/driveline-dashboard.html` | [driveline-pitching](https://github.com/treychase/driveline-pitching) | `python dashboard_html.py --out dashboard.html` |
 | `projects/driveline-hitting-dashboard.html` | [driveline-hitting](https://github.com/treychase/driveline-hitting) | `save_dashboard(swing_dashboard(...))`, see that repo's README |
-| `projects/skater-tracking-dashboard.html` | `tools/` in this repo, from the [avs_take_home](https://github.com/treychase/avs_take_home) tracking data | `python tools/build_skater_dashboard.py --games-dir ../avs_take_home/games` |
+| `projects/skater-tracking-dashboard.html` | `tools/` in this repo, from the player-tracking analysis repo | `python tools/build_skater_dashboard.py --games-dir <that repo>/games` |
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
 
 The skater replay is the one built here rather than copied in. `tools/` holds
 the two halves: `build_skater_dashboard.py` reads one period out of the
-`games/*.parquet` files in the analysis repo and writes the positions into
-`skater_dashboard_template.html`, which draws the rink on a canvas and replays
-them. The rink geometry and palette are copied from `viz_functions.py` in that
-repo, so the web rink and the matplotlib one are the same rink; the positions
+`games/*.parquet` files in the tracking analysis repo and writes the positions
+into `skater_dashboard_template.html`, which draws the rink on a canvas and
+replays them. The rink geometry and palette are copied from `viz_functions.py`
+in that repo, so the web rink and the matplotlib one are the same rink; the positions
 are embedded as integers in tenths of a foot, the resolution the feed carries,
 which is what keeps a whole twenty-minute period under a megabyte and a half.
 The generator belongs with its data and can move into the analysis repo
@@ -212,8 +217,8 @@ repository smaller, at the cost of the report living at a different address.
 
 Notebooks work the same way: `jupyter nbconvert --to html --embed-images
 notebook.ipynb` produces a single file for `projects/`.
-`projects/nba-salary-model.html` is the worked example, with two edits made to
-the converted file:
+`projects/nba-salary-model.html` and `projects/velocity-projection.html` are the
+worked examples, each with the same two edits made to the converted file:
 
 - **The MathJax script tag is deleted.** nbconvert loads MathJax from a CDN and
   configures `$...$` as inline math, so a page discussing salaries renders
@@ -221,8 +226,9 @@ the converted file:
   in that notebook is LaTeX, so dropping the tag both fixes the text and leaves
   the page genuinely self-contained. Keep it if a notebook actually uses math,
   and escape the dollar signs instead.
-- **A bar back to the site is prepended** to `<body>`, since a converted
-  notebook is otherwise a dead end with no way back to the site.
+- **A bar back to the site is prepended** to `<body>`, and the footer from
+  *Copyright* is appended, since a converted notebook is otherwise a dead end
+  with no way back to the site.
 
 The nbconvert output also carries a mermaid loader, but it exits before
 requesting anything when the notebook has no mermaid diagrams, so it can stay.
