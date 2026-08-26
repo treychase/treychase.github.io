@@ -343,16 +343,20 @@ window.SITE_DATA = {
     },
     {
       section: "health",
-      title: "Pitcher biomechanics, Phillies FCL",
-      summary: "Bayesian LASSO and horseshoe priors pulling signal out of a wide, correlated set of mechanical measurements.",
+      title: "Projecting peak velocity from biomechanics",
+      summary: "Which of these arms throws hardest in five years? Peak velocity projected from delivery mechanics, with the uncertainty kept.",
       year: "2025",
       tags: ["Research project"],
       status: "",
       body: [
-        "Biomechanical modeling of complex league pitchers using Bayesian LASSO and horseshoe priors to pull signal out of a wide, correlated set of mechanical measurements, with a boosted model as a benchmark. Results are delivered through an interactive figure a coach can click through joint by joint."
+        "A complex-league group of pitchers, a wide set of joint angles and segment velocities measured at foot plant, maximum external rotation, and ball release, and one question: which of them throws the hardest five years from now? That is a question about peak velocity rather than today's radar reading, so the target is the 95th percentile of a pitcher's velocity rather than his maximum, which is one noisy pitch.",
+        "The unit of observation had to move first. Pitches per pitcher run from three to over four hundred, so pitch-level correlations are dominated by whoever threw the most and violate independence besides; everything collapses to one row per pitcher. Mechanics are winsorized to the 1st and 99th percentiles before that aggregation, because an outlier scan turned up tracking errors no body produces, a hip flexion of minus 260 degrees among them.",
+        "Three models on the aggregated data: gradient boosting with SHAP as a nonlinearity check, a Bayesian LASSO with Laplace priors, and a regularized horseshoe following Piironen and Vehtari, both fit in PyMC on standardized predictors and a standardized target so the priors live on a common scale, and compared by PSIS-LOO. Projections carry 90 percent posterior predictive intervals, which include the pitcher-level residual scale, so they answer what velocity you would expect to see rather than where the mean sits. Every projection is then read against within-pool percentiles for each modeled metric, so a coach can see which mechanics put an arm at the top rather than being handed a ranking."
       ],
-      stack: "Python, PyMC, XGBoost, Streamlit, Plotly",
-      links: [],
+      stack: "Python, PyMC, XGBoost, SHAP, Streamlit, Docker",
+      links: [
+        { label: "Read the notebook", url: "projects/velocity-projection.html", primary: true }
+      ],
       files: []
     },
     {
