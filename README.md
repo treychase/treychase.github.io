@@ -133,16 +133,32 @@ to match the site and reached from its project card:
 | --- | --- |
 | `projects/mlb-daily-report.html` | MLB Daily Report |
 | `projects/driveline-pitching.html` | OpenBiomechanics pitching dashboard |
+| `projects/driveline-hitting.html` | Driveline hitting dashboard |
 | `projects/computing-bootcamp.html` | DSS computing bootcamp |
 
-`projects/driveline-dashboard.html` is different: it is not a write-up but the
-rendered dashboard itself, a single self-contained file built by
-`dashboard_html.py` in the
-[driveline-pitching](https://github.com/treychase/driveline-pitching) repo and
-copied here, so the project page can link to something that loads immediately
-rather than waiting on a Hugging Face Space to wake up. Rebuild it with
-`python dashboard_html.py --out dashboard.html` and replace the file to refresh
-it. Its screenshots sit in `files/driveline/`.
+## The two hosted dashboards
+
+Two files in `projects/` are not write-ups but the rendered dashboards
+themselves, each a single self-contained page built in its own repository and
+copied here, so a project card can link to something that loads immediately
+rather than waiting on a Space to wake up:
+
+| File | Built by | Rebuild with |
+| --- | --- | --- |
+| `projects/driveline-dashboard.html` | [driveline-pitching](https://github.com/treychase/driveline-pitching) | `python dashboard_html.py --out dashboard.html` |
+| `projects/driveline-hitting-dashboard.html` | [driveline-hitting](https://github.com/treychase/driveline-hitting) | `save_dashboard(swing_dashboard(...))`, see that repo's README |
+
+Screenshots for the project pages sit in `files/driveline/` and
+`files/driveline-hitting/`.
+
+Both copies carry a short script appended at the bottom of the file that starts
+the animation that is on screen, at the frame duration the figure's own Play
+button specifies. Plotly's own auto-play runs at its 500 ms default, which is
+slow enough that a swing or a delivery reads as a still image, and on the
+tabbed pitching dashboard it also animated the panels behind `display:none`.
+The pitching fix is upstream in `dashboard_html.py`, so a rebuilt file already
+carries it; the hitting one is added to the copy here. Re-apply it after
+replacing either file — or rebuild from a repo that has it.
 
 Tick **Button** on a link to render it as a filled call to action rather than a
 plain arrow link — useful for a "Launch the app" link that should stand out.
@@ -164,6 +180,20 @@ repository smaller, at the cost of the report living at a different address.
 
 Notebooks work the same way: `jupyter nbconvert --to html --embed-images
 notebook.ipynb` produces a single file for `projects/`.
+`projects/nba-salary-model.html` is the worked example, with two edits made to
+the converted file:
+
+- **The MathJax script tag is deleted.** nbconvert loads MathJax from a CDN and
+  configures `$...$` as inline math, so a page discussing salaries renders
+  "under $10M with a thin tail running past $60M" as an italic equation. Nothing
+  in that notebook is LaTeX, so dropping the tag both fixes the text and leaves
+  the page genuinely self-contained. Keep it if a notebook actually uses math,
+  and escape the dollar signs instead.
+- **A bar back to the site is prepended** to `<body>`, since a converted
+  notebook is otherwise a dead end with no way back to the site.
+
+The nbconvert output also carries a mermaid loader, but it exits before
+requesting anything when the notebook has no mermaid diagrams, so it can stay.
 
 ## Publishing on GitHub Pages
 
