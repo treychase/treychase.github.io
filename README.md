@@ -25,13 +25,34 @@ is written to disk or to local storage.
 **Offline.** Skip Connect, edit, then press *Download* and replace
 `data/projects.js` with the file it gives you and commit that.
 
+## Cards open on click
+
+A card shows `summary` — one line, written for that spot — and nothing else.
+Pressing *Read more* swaps in `body`, the full description, and *Show less*
+puts it back. Categories read as a list of projects rather than a wall of
+prose, and nothing is lost: the long version is one click away.
+
+```js
+{ title:   "Finding undervalued NBA players",
+  summary: "A salary model that ranks production against what the market pays for it.",
+  body:    ["The full description, one string per paragraph.", "..."] }
+```
+
+Write the summary as a sentence that stands on its own, not a truncation of the
+first paragraph — the two are never shown at the same time. An entry with no
+summary falls back to its first paragraph, and then the toggle only appears if
+there are further paragraphs behind it, so nothing is ever hidden without a way
+to open it. Articles and Blogs rows show the summary alone with no toggle,
+since the whole row is already a link. Printing ignores the toggle and prints
+every description in full.
+
 Everything on the Projects, Articles and Blogs tabs comes from
 `data/projects.js`. An entry's `section` is one of `baseball`, `football`,
-`basketball`, `hockey`, `health`, `teaching`, `articles` or `blogs`; the first
-six are the category squares on the Projects tab, and each is deep-linkable by
-hash, so `index.html#teaching` opens that category directly. Adding a new
-category means adding it to `CATEGORIES`, `LABELS`, `EMPTY` and `SURFACES` in
-`index.html` and to `SECTIONS` in `admin.html`. The counts on the category squares are derived from it, so
+`basketball`, `hockey`, `health`, `articles` or `blogs`; the first five are the
+category squares on the Projects tab, and each is deep-linkable by hash, so
+`index.html#hockey` opens that category directly. Adding a new category means
+adding it to `CATEGORIES`, `LABELS`, `EMPTY` and `SURFACES` in `index.html` and
+to `SECTIONS` in `admin.html`. The counts on the category squares are derived from it, so
 they never need updating by hand. The Resume tab is static markup in
 `index.html`.
 
@@ -134,7 +155,6 @@ to match the site and reached from its project card:
 | `projects/mlb-daily-report.html` | MLB Daily Report |
 | `projects/driveline-pitching.html` | OpenBiomechanics pitching dashboard |
 | `projects/driveline-hitting.html` | Driveline hitting dashboard |
-| `projects/computing-bootcamp.html` | DSS computing bootcamp |
 
 ## The two hosted dashboards
 

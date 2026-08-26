@@ -19,10 +19,15 @@
    Drag and zoom it visually under "Headshot" in admin.html.
 
    entries  -  every project, article and blog post.
+
+   A card shows `summary` and nothing else until someone presses Read more,
+   at which point `body` opens in its place. Keep the summary to one line;
+   an entry without one falls back to its first paragraph.
    {
      section: "baseball" | "football" | "basketball" | "hockey"
-              | "health" | "teaching" | "articles" | "blogs",
+              | "health" | "articles" | "blogs",
      title:   "Project name",
+     summary: "The one line the card shows.",   // the rest opens on click
      year:    "2026",
      tags:    ["Front office tool"],        // shown after the year
      status:  "" | "in-progress" | "shelved",
@@ -86,6 +91,7 @@ window.SITE_DATA = {
     {
       section: "baseball",
       title: "Bayesian Stuff+ index for MLB pitchers",
+      summary: "One comparable grade per pitch type, built on run value per 100 pitches across three seasons of Statcast.",
       pinned: true,
       year: "2026",
       tags: ["Master's thesis", "Best portfolio, Duke Statistical Science"],
@@ -104,6 +110,7 @@ window.SITE_DATA = {
     {
       section: "baseball",
       title: "MLB Daily Report",
+      summary: "Every game from the previous day, plus pitch run value, Bayesian win projections, and vig-free prop pricing.",
       pinned: true,
       year: "2025 to present",
       tags: ["Shiny dashboard", "Live"],
@@ -123,6 +130,7 @@ window.SITE_DATA = {
     {
       section: "baseball",
       title: "Expected outcomes model, Duke Baseball",
+      summary: "Expected outcome models and run value calculators, delivered to a new coaching staff through Shiny dashboards.",
       year: "2024 to 2026",
       tags: ["Head of Data Analytics"],
       status: "",
@@ -136,6 +144,7 @@ window.SITE_DATA = {
     {
       section: "baseball",
       title: "Cumulative OPS trajectories",
+      summary: "Raw Statcast pitch events turned into a season-to-date OPS series for every regular hitter, one row per day.",
       year: "2026",
       tags: [],
       status: "in-progress",
@@ -149,6 +158,7 @@ window.SITE_DATA = {
     {
       section: "baseball",
       title: "OpenBiomechanics pitching dashboard",
+      summary: "Pick a pitcher, watch the delivery in 3D, and read where the velocity comes from and what it costs the elbow.",
       pinned: true,
       year: "2024 to present",
       tags: ["Independent project", "Live"],
@@ -170,6 +180,7 @@ window.SITE_DATA = {
     {
       section: "baseball",
       title: "Driveline hitting dashboard",
+      summary: "Pick a swing and read it: bat speed, weight shift, and predicted exit velocity against what the ball actually did.",
       year: "2026",
       tags: ["Independent project", "Live"],
       status: "",
@@ -191,6 +202,7 @@ window.SITE_DATA = {
     {
       section: "basketball",
       title: "True shooting projection, Bayesian AR",
+      summary: "What a player is likely to shoot next season, which is not the same question as what he shot last season.",
       year: "2026",
       tags: ["Front office tool"],
       status: "",
@@ -204,6 +216,7 @@ window.SITE_DATA = {
     {
       section: "basketball",
       title: "Finding undervalued NBA players",
+      summary: "A salary model that ranks production against what the market pays for it, and names who a rival could actually sign.",
       year: "2026",
       tags: ["Salary model"],
       status: "",
@@ -224,6 +237,7 @@ window.SITE_DATA = {
     {
       section: "basketball",
       title: "Positional scarcity and replacement level",
+      summary: "What a roster spot is worth depends on how deep the league is at that position. This prices production against that.",
       year: "2026",
       tags: [],
       status: "in-progress",
@@ -237,6 +251,7 @@ window.SITE_DATA = {
     {
       section: "basketball",
       title: "NBA data warehouse, 2000 to present",
+      summary: "Every season since 2000-01 in one table, box score through player tracking, feeding the rest of the basketball work.",
       year: "2026",
       tags: ["Infrastructure"],
       status: "",
@@ -250,6 +265,7 @@ window.SITE_DATA = {
     {
       section: "basketball",
       title: "Player projection system",
+      summary: "DARKO-style projections: aging curves and prior-informed updates applied to per-possession production.",
       year: "2025",
       tags: ["Personal project"],
       status: "",
@@ -263,6 +279,7 @@ window.SITE_DATA = {
     {
       section: "basketball",
       title: "Shot quality grade",
+      summary: "Grading a shot on shooter efficiency and tracking context rather than on whether it went in. Shelved over data resolution.",
       year: "2026",
       tags: [],
       status: "shelved",
@@ -278,6 +295,7 @@ window.SITE_DATA = {
     {
       section: "hockey",
       title: "What makes a good skater",
+      summary: "Ninety thousand tracking timestamps reduced to a scout's question: who skates well, and how would you know from coordinates alone?",
       pinned: true,
       year: "2026",
       tags: ["Tracking data"],
@@ -295,6 +313,7 @@ window.SITE_DATA = {
     {
       section: "health",
       title: "Compliance dashboards, NBA",
+      summary: "The league's first compliance dashboards for a new large-scale assessment program, audit trail included.",
       year: "2025 to 2026",
       tags: ["Data Analyst"],
       status: "",
@@ -308,6 +327,7 @@ window.SITE_DATA = {
     {
       section: "health",
       title: "Sensor data pipeline",
+      summary: "An end-to-end automated pipeline for high-volume sensor and operational data, replacing manual processing.",
       year: "2025 to 2026",
       tags: ["Data Analyst"],
       status: "",
@@ -321,6 +341,7 @@ window.SITE_DATA = {
     {
       section: "health",
       title: "Pitcher biomechanics, Phillies FCL",
+      summary: "Bayesian LASSO and horseshoe priors pulling signal out of a wide, correlated set of mechanical measurements.",
       year: "2025",
       tags: ["Research project"],
       status: "",
@@ -334,6 +355,7 @@ window.SITE_DATA = {
     {
       section: "health",
       title: "Survival analysis for availability",
+      summary: "Time-to-event methods for the question of who is available, and for how long.",
       year: "2025",
       tags: ["Graduate coursework"],
       status: "",
@@ -342,25 +364,6 @@ window.SITE_DATA = {
       ],
       stack: "R, survival, tidyverse",
       links: [],
-      files: []
-    },
-
-    /* ---------------- TEACHING ---------------- */
-    {
-      section: "teaching",
-      title: "Duke Statistical Science computing bootcamp",
-      year: "2024",
-      tags: ["Course materials"],
-      status: "",
-      body: [
-        "The bootcamp incoming Duke statistics graduate students take the week before classes start: computing resources and access, reproducible research, git and GitHub, literate programming in Quarto and R Markdown, and running jobs on the Duke Compute Cluster. Five self-contained reveal.js decks, with an analysis of United Nations roll-call voting carried through them as the worked example.",
-        "The materials are the department's, adapted by Alexander Fisher from earlier versions by Shawn Santo, Mine Cetinkaya-Rundel, and Colin Rundel. I keep a fork as the reference I work from and hand to analysts picking up version control and Quarto for the first time."
-      ],
-      stack: "Quarto, reveal.js, R, git",
-      links: [
-        { label: "All five decks", url: "projects/computing-bootcamp.html", primary: true },
-        { label: "View the materials", url: "https://github.com/treychase/computing_bootcamp_2024" }
-      ],
       files: []
     }
 
