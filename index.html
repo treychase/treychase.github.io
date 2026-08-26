@@ -109,13 +109,48 @@ h1.name{
 }
 h1.name .second{display:block;color:var(--field)}
 
+/* Degrees. A grid so the logo, degree and school each get their own
+   column and line up down the page; each row stays whole instead of
+   wrapping mid-degree the way a single run of text did. */
 .credentials{
+  list-style:none;padding:0;
+  margin:clamp(16px,2.5vw,24px) 0 0;
+  /* one grid for every row, so the columns line up with each other;
+     the rows opt in with display:contents */
+  display:inline-grid;
+  grid-template-columns:26px max-content minmax(0,1fr);
+  align-items:center;column-gap:13px;row-gap:9px;
   font-family:var(--mono);
   font-size:clamp(11px,1.5vw,13px);
   letter-spacing:.04em;color:var(--muted);
-  margin:clamp(16px,2.5vw,24px) 0 0;max-width:60ch;
 }
-.credentials b{color:var(--ink);font-weight:500}
+.credentials li{display:contents}
+.credentials .degree{color:var(--ink);font-weight:500;white-space:nowrap}
+.credentials .school{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.credentials .school::before{content:"\00b7";margin-right:9px;opacity:.45}
+
+.crest{
+  width:26px;height:26px;display:grid;place-items:center;
+  overflow:hidden;border-radius:3px;
+}
+.crest img{width:100%;height:100%;object-fit:contain;display:block}
+.crest .initials{
+  width:100%;height:100%;display:grid;place-items:center;
+  background:var(--field);color:var(--paper);
+  font-family:var(--display);font-variation-settings:"wdth" 84;font-weight:800;
+  font-size:11px;letter-spacing:-.03em;line-height:1;
+}
+@media (max-width:560px){
+  .credentials{grid-template-columns:1fr;row-gap:14px}
+  .credentials li{
+    display:grid;
+    grid-template-columns:26px minmax(0,1fr);
+    column-gap:11px;row-gap:1px;align-items:center;
+  }
+  .credentials .crest{grid-row:span 2}
+  .credentials .school{white-space:normal}
+  .credentials .school::before{content:none}
+}
 
 .contact{
   list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;
@@ -405,6 +440,25 @@ footer a:hover{color:var(--field);border-color:var(--field)}
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms !important;transition-duration:.001ms !important}
 }
+
+/* ---------- print ----------
+   Printing at page width triggered the narrow-screen rules, which stranded
+   the portrait alone at the top, and cards were being sliced in half across
+   page breaks. */
+@media print{
+  body{background:#fff;font-size:11pt}
+  .band,.tabsbar{display:none}
+  main{padding-top:0;min-height:0}
+  .lockup{grid-template-columns:minmax(0,1fr) 190px;align-items:end}
+  .portrait{order:0;max-width:none}
+  .panel,.view{animation:none}
+  .card,.entry,.role,.tile,.empty,.res-block{break-inside:avoid;page-break-inside:avoid}
+  .featured,.grid{break-inside:auto}
+  h2.section,.featured-head{break-after:avoid}
+  .tile{border-color:rgba(20,32,27,.3)}
+  .go,.attachments a{text-decoration:none}
+  footer{border-top:1px solid rgba(20,32,27,.3)}
+}
 </style>
 </head>
 
@@ -416,10 +470,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     <div>
     <p class="eyebrow">Data scientist <span>/</span> statistician <span>/</span> sports analytics</p>
     <h1 class="name">Trey<span class="second">Chase</span></h1>
-    <p class="credentials">
-      <b>M.S. Statistical Science</b>, Duke University &nbsp;&middot;&nbsp;
-      <b>B.S. Mathematics</b>, Cal Poly San Luis Obispo
-    </p>
+    <ul class="credentials" id="credentials"></ul>
     <ul class="contact">
       <li><a href="mailto:treychase64@gmail.com">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2.5 7 9.5 6 9.5-6"/></svg>
@@ -710,6 +761,35 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     img.onload = function () { img.hidden = false; };
     img.onerror = function () { img.remove(); };
     img.src = hs.src;
+  })();
+
+  /* ---------- degrees ----------
+     Each school gets a logo if one is configured and loads, and a monogram
+     otherwise, so the row never collapses to a broken image. */
+  (function () {
+    var host = document.getElementById('credentials');
+    if (!host) return;
+    var rows = (PROFILE.education || []).filter(function (e) { return e && e.degree; });
+    if (!rows.length) { host.remove(); return; }
+
+    host.innerHTML = rows.map(function (e) {
+      var initials = esc(e.initials || (e.school || '?').charAt(0));
+      var tint = e.color ? ' style="background:' + esc(e.color) + '"' : '';
+      return '<li><span class="crest">'
+           +   '<span class="initials"' + tint + '>' + initials + '</span>'
+           + '</span>'
+           + '<span class="degree">' + esc(e.degree) + '</span>'
+           + '<span class="school">' + esc(e.school || '') + '</span></li>';
+    }).join('');
+
+    rows.forEach(function (e, i) {
+      if (!e.logo) return;
+      var crest = host.children[i].querySelector('.crest');
+      var img = new Image();
+      img.alt = '';
+      img.onload = function () { crest.innerHTML = ''; crest.appendChild(img); };
+      img.src = e.logo;   /* on error the monogram simply stays put */
+    });
   })();
 
   /* ---------- resume download ----------

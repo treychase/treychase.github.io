@@ -5,7 +5,8 @@
 
    SITE_DATA has two parts:
 
-   profile  -  the headshot and its crop, plus the resume download.
+   profile  -  the headshot and its crop, the resume download, and the
+                degrees shown under the name.
    {
      headshot: {
        src:  "files/headshot.jpg",  // path to the image in this repo
@@ -51,7 +52,32 @@ window.SITE_DATA = {
        needed. Clear src to hide the button entirely. */
     resume: {
       src: "files/trey_chase_resume.docx"
-    }
+    },
+
+    /* Degrees, shown under the name. Each row stays on one line and the
+       columns line up, so the degrees and schools read down the page.
+       logo:     path to a school logo in this repo. Drop the official
+                 file in and it appears; until then, or if the file is
+                 missing, `initials` is drawn as a monogram instead.
+       initials: 1 to 3 letters for that fallback.
+       color:    background for that monogram, so it reads as the school's
+                 even before a logo is added. Optional. */
+    education: [
+      {
+        degree: "M.S. Statistical Science",
+        school: "Duke University",
+        logo: "files/duke.svg",
+        initials: "D",
+        color: "#012169"
+      },
+      {
+        degree: "B.S. Mathematics",
+        school: "Cal Poly San Luis Obispo",
+        logo: "files/calpoly.svg",
+        initials: "CP",
+        color: "#154734"
+      }
+    ]
   },
 
   entries: [
