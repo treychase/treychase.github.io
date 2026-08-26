@@ -88,13 +88,17 @@ window.SITE_DATA = {
       title: "Bayesian Stuff+ index for MLB pitchers",
       pinned: true,
       year: "2026",
-      tags: ["Master's portfolio", "Best portfolio, Duke Statistical Science"],
+      tags: ["Master's thesis", "Best portfolio, Duke Statistical Science"],
       status: "",
       body: [
-        "A continuous pitch-quality index built on multi-year Statcast data, modeled with a Student-t likelihood, pitch-type-specific slopes, and pitcher-level random intercepts. The result is one comparable grade per pitch type that a coach can read without a stats background."
+        "Quantifying pitcher quality by modeling run value per 100 pitches against the physical properties of the pitch. ERA and WHIP confound a pitcher's own ability with his defense, his sequencing luck, and his park; velocity, spin, break, arm angle, extension, and plate location do not. Three seasons of Statcast, 2023 through 2025, aggregated to the pitcher by pitch-type by season level, with cells under 50 pitches dropped.",
+        "One joint Bayesian Student-t regression across all eight pitch types, fit in brms and Stan: every predictor gets a pitch-type-specific slope, so what makes a slider good is allowed to differ from what makes a sinker good, and a pitcher-level random intercept pools information across a pitcher's whole arsenal. That partial pooling is doing the most work exactly where it is needed, on low-usage pitch types with few observations. The Student-t likelihood, with degrees of freedom estimated rather than assumed, absorbs the heavy tails a Gaussian would chase. Posterior fitted values are standardized within pitch type into a Stuff+ index where 100 is league average and higher is better.",
+        "Convergence is clean, R-hat 1.006 with no divergent transitions, and the index passes face validity: higher Stuff+ tracks lower run value across all eight pitch types, and the top of each list is Chapman's sinker, Clase's cutter, and Yamamoto's split-finger. Plate height is among the most credible predictors nearly everywhere, which says command is foundational rather than incidental; horizontal break leads for four-seams and sinkers, extension and the velocity by vertical break interaction for cutters and sweepers. Prediction R-squared runs 0.114 to 0.164 by pitch type, and the report is direct about why: pitch-level outcomes are dominated by batter decisions and defense, and the point is to isolate the mechanics-driven component, not to maximize fit. Opponent quality is named as the next covariate worth adding."
       ],
       stack: "R, brms, Stan, Quarto",
-      links: [],
+      links: [
+        { label: "Read the thesis", url: "files/quantifying-pitcher-quality.pdf", primary: true }
+      ],
       files: []
     },
     {

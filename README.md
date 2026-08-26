@@ -151,9 +151,10 @@ rather than waiting on a Space to wake up:
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
 
-Both copies carry a short script appended at the bottom of the file that starts
-the animation that is on screen, at the frame duration the figure's own Play
-button specifies. Plotly's own auto-play runs at its 500 ms default, which is
+Both copies carry two things appended at the bottom of the file: the footer
+described under *Copyright* below, and a short script that starts the animation
+that is on screen, at the frame duration the figure's own Play button
+specifies. Plotly's own auto-play runs at its 500 ms default, which is
 slow enough that a swing or a delivery reads as a still image, and on the
 tabbed pitching dashboard it also animated the panels behind `display:none`.
 The pitching fix is upstream in `dashboard_html.py`, so a rebuilt file already
@@ -194,6 +195,22 @@ the converted file:
 
 The nbconvert output also carries a mermaid loader, but it exits before
 requesting anything when the notebook has no mermaid diagrams, so it can stay.
+
+## Copyright
+
+Every page carries `© 2026 Trey Chase` in its footer. `index.html` and the four
+hand-styled pages in `projects/` share the same `<footer class="wrap">` markup,
+so a new project page gets it by copying an existing one. The three generated
+pages — the converted notebook and the two dashboards — cannot inherit it, so
+they carry an inline-styled `<footer>` appended before `</body>`; re-add it
+after regenerating any of those files, along with the play script noted above.
+
+Bumping the year is a find and replace across those eight files:
+
+```bash
+grep -rl '© 2026 Trey Chase' index.html projects/*.html \
+  | xargs sed -i 's/© 2026 Trey Chase/© 2027 Trey Chase/'
+```
 
 ## Publishing on GitHub Pages
 
