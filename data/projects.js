@@ -157,8 +157,28 @@ window.SITE_DATA = {
       stack: "Python, NumPy, Gradio, Plotly, Hugging Face Spaces",
       links: [
         { label: "Launch the dashboard", url: "https://huggingface.co/spaces/treychase/driveline-pitching", primary: true },
+        { label: "Open the sample dashboard", url: "projects/driveline-dashboard.html" },
         { label: "Full documentation", url: "projects/driveline-pitching.html" },
         { label: "View code", url: "https://github.com/treychase/driveline-pitching" }
+      ],
+      files: []
+    },
+    {
+      section: "baseball",
+      title: "Driveline hitting dashboard",
+      year: "2026",
+      tags: ["Independent project", "Live"],
+      status: "",
+      body: [
+        "The same open motion capture turned on hitters: pick a swing and watch the skeleton and the bat move through contact, next to bat speed and the vertical force each leg puts into the ground on a timeline where zero is the ball.",
+        "Exit velocity is modeled from eight biomechanics features with a Gaussian process, a Matern 3/2 kernel carrying one length scale per feature. It was chosen over a random forest and XGBoost on cross-validated RMSE, 6.16 mph against 6.57 and 6.71, and everything plotted is an out-of-fold prediction. One of the eight features is swing efficiency, bat speed over hand speed, which separates a hitter who generates barrel speed from one who is only moving his hands fast.",
+        "A self-contained HTML page carries eight hitters from a 73.5 mph average exit velocity to 107.0, and a Streamlit app reaches any of the 687 swings with the download, the swing index, and the model fit all cached."
+      ],
+      stack: "Python, scikit-learn, Plotly, Streamlit, pandas",
+      links: [
+        { label: "Open the dashboard", url: "projects/driveline-hitting-dashboard.html", primary: true },
+        { label: "Full documentation", url: "projects/driveline-hitting.html" },
+        { label: "View code", url: "https://github.com/treychase/driveline-hitting" }
       ],
       files: []
     },
