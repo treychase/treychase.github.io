@@ -21,7 +21,7 @@
    entries  -  every project, article and blog post.
    {
      section: "baseball" | "football" | "basketball" | "hockey"
-              | "health" | "articles" | "blogs",
+              | "health" | "teaching" | "articles" | "blogs",
      title:   "Project name",
      year:    "2026",
      tags:    ["Front office tool"],        // shown after the year
@@ -144,15 +144,22 @@ window.SITE_DATA = {
     },
     {
       section: "baseball",
-      title: "Motion and sensor analysis, Driveline",
-      year: "2024",
-      tags: ["Independent project"],
+      title: "OpenBiomechanics pitching dashboard",
+      pinned: true,
+      year: "2024 to present",
+      tags: ["Independent project", "Live"],
       status: "",
       body: [
-        "Cleaning, transformation, and analysis of a large open-source motion capture and sensor dataset to assess pitcher performance, with findings framed around development decisions rather than model fit."
+        "Motion capture, force plates, and joint energy flow from the Driveline OpenBiomechanics pitching dataset, cleaned and aligned on one clock so a delivery can be read as a single picture: the 3D pose animating on a mound inferred from the foot markers, ground reaction force under each leg with the delivery phases shaded, and a body colored by the work each joint generated against the dataset.",
+        "A Bayesian Lasso written from scratch in NumPy predicts release velocity from all 76 point-of-interest metrics at once, reaching roughly 0.8 R-squared and 2 mph RMSE out of sample. It returns a posterior rather than a point estimate, so the diagnostics show which mechanics actually carry the prediction. A mechanical efficiency score then separates velocity driven from the trunk and legs from velocity bought with elbow valgus torque, mapped to a dataset percentile so it reads across pitchers.",
+        "It runs as a Gradio app on Hugging Face with a searchable pitcher picker, sourcing every file on demand rather than vendoring a dataset that is licensed non-commercially."
       ],
-      stack: "Python, pandas",
-      links: [],
+      stack: "Python, NumPy, Gradio, Plotly, Hugging Face Spaces",
+      links: [
+        { label: "Launch the dashboard", url: "https://huggingface.co/spaces/treychase/driveline-pitching", primary: true },
+        { label: "Full documentation", url: "projects/driveline-pitching.html" },
+        { label: "View code", url: "https://github.com/treychase/driveline-pitching" }
+      ],
       files: []
     },
 
@@ -305,6 +312,25 @@ window.SITE_DATA = {
       ],
       stack: "R, survival, tidyverse",
       links: [],
+      files: []
+    },
+
+    /* ---------------- TEACHING ---------------- */
+    {
+      section: "teaching",
+      title: "Duke Statistical Science computing bootcamp",
+      year: "2024",
+      tags: ["Course materials"],
+      status: "",
+      body: [
+        "The bootcamp incoming Duke statistics graduate students take the week before classes start: computing resources and access, reproducible research, git and GitHub, literate programming in Quarto and R Markdown, and running jobs on the Duke Compute Cluster. Five self-contained reveal.js decks, with an analysis of United Nations roll-call voting carried through them as the worked example.",
+        "The materials are the department's, adapted by Alexander Fisher from earlier versions by Shawn Santo, Mine Cetinkaya-Rundel, and Colin Rundel. I keep a fork as the reference I work from and hand to analysts picking up version control and Quarto for the first time."
+      ],
+      stack: "Quarto, reveal.js, R, git",
+      links: [
+        { label: "All five decks", url: "projects/computing-bootcamp.html", primary: true },
+        { label: "View the materials", url: "https://github.com/treychase/computing_bootcamp_2024" }
+      ],
       files: []
     }
 
