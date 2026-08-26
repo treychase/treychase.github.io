@@ -5,7 +5,7 @@
 
    SITE_DATA has two parts:
 
-   profile  -  the headshot and its crop.
+   profile  -  the headshot and its crop, plus the resume download.
    {
      headshot: {
        src:  "files/headshot.jpg",  // path to the image in this repo
@@ -42,8 +42,15 @@ window.SITE_DATA = {
     headshot: {
       src: "files/headshot.jpg",
       zoom: 2,
-      x: 55,
-      y: 38
+      x: 57.5,
+      y: 39
+    },
+
+    /* The resume download button. The label is derived from the file
+       extension, so swapping the .docx for a .pdf is the only change
+       needed. Clear src to hide the button entirely. */
+    resume: {
+      src: "files/trey_chase_resume.docx"
     }
   },
 

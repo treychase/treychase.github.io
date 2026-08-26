@@ -30,6 +30,18 @@ Everything on the Projects, Articles and Blogs tabs comes from
 they never need updating by hand. The Resume tab is static markup in
 `index.html`.
 
+## The resume
+
+The Resume tab's download button is driven by `profile.resume.src` in
+`data/projects.js` and takes its label from that file's extension, so a PDF
+reads *Download PDF* and a Word file reads *Download DOCX*. Upload a new one
+from *Connect → Site files* in the editor and the path updates itself. Clearing
+`src` hides the button rather than leaving a link that 404s.
+
+It currently points at `files/trey_chase_resume.docx`, the Word file in the
+repo. A PDF is the better thing to hand someone from a portfolio site: export
+one and upload it, and the button relabels itself with no other change.
+
 ## The headshot
 
 Press *Headshot* in the editor's top bar. The frame shown is the exact shape
@@ -55,12 +67,9 @@ monogram, so nothing looks broken while the file is missing.
 
 ## Publishing on GitHub Pages
 
-In *Settings → Pages*, set the source to the `main` branch, folder `/ (root)`.
+The repository is named `treychase.github.io`, which is what a GitHub Pages
+**user site** requires, so it publishes to `https://treychase.github.io`.
 
-One thing to know: a GitHub Pages **user site**, the one served at
-`https://treychase.github.io`, has to live in a repository named exactly
-`treychase.github.io`. This repository is named `.github.io`, so it will not
-claim that address — Pages treats it as a project site instead. Renaming the
-repository to `treychase.github.io` in *Settings → General* is enough to fix
-it; every path in the site is relative, so nothing here needs changing either
-way.
+In *Settings → Pages*, set the source to the `main` branch, folder `/ (root)`.
+Every path in the site is relative, so it also works unchanged if served from
+a subdirectory.
