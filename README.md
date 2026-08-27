@@ -52,9 +52,9 @@ either give it an artifact or leave it off.
 
 Everything on the Projects, Articles and Blogs tabs comes from
 `data/projects.js`. An entry's `section` is one of `baseball`, `football`,
-`basketball`, `hockey`, `health`, `articles` or `blogs`; the first five are the
-category squares on the Projects tab, and each is deep-linkable by hash, so
-`index.html#hockey` opens that category directly. Adding a new category means
+`basketball`, `hockey`, `health`, `markets`, `articles` or `blogs`; the first
+six are the category squares on the Projects tab, and each is deep-linkable by
+hash, so `index.html#hockey` opens that category directly. Adding a new category means
 adding it to `CATEGORIES`, `LABELS`, `EMPTY` and `SURFACES` in `index.html` and
 to `SECTIONS` in `admin.html`. The counts on the category squares are derived from it, so
 they never need updating by hand. The Resume tab is static markup in
@@ -167,7 +167,7 @@ the note under *Publishing a rendered Quarto document* below.
 
 ## The hosted dashboards
 
-Four files in `projects/` are not write-ups but the dashboards themselves,
+Five files in `projects/` are not write-ups but the dashboards themselves,
 each a single self-contained page, so a project card can link to something that
 loads immediately rather than waiting on a Space to wake up:
 
@@ -177,6 +177,7 @@ loads immediately rather than waiting on a Space to wake up:
 | `projects/driveline-hitting-dashboard.html` | [driveline-hitting](https://github.com/treychase/driveline-hitting) | `save_dashboard(swing_dashboard(...))`, see that repo's README |
 | `projects/skater-tracking-dashboard.html` | `tools/` in this repo, from the player-tracking analysis repo | `python tools/build_skater_dashboard.py --games-dir <that repo>/games` |
 | `projects/run-value-matrix.html` | `tools/` in this repo, from the run values repo | `python tools/build_run_values_page.py --rds <that repo>/master_run_values.rds` |
+| `projects/stock-forecast-dashboard.html` | `tools/` in this repo, from the Bayesian time-series repo | `python tools/build_stock_dashboard.py --repo <that repo>` |
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
@@ -194,7 +195,12 @@ whenever that repo is the one being edited.
 
 `build_run_values_page.py` works the same way for the run value matrix, reading
 `master_run_values.rds` and writing it into `run_values_template.html` as a
-diverging heatmap. **Output only, deliberately.** The team's dashboards and
+diverging heatmap. `build_stock_dashboard.py` is the third of the pair
+kind: it imports the forecasting project's own model rather than reimplementing
+it, fits every ticker in that project's bundled offline sample, and writes the
+history and the five-day fan into `stock_dashboard_template.html`. Fitting a
+hundred tickers takes a few minutes, so the fitted numbers are cached in
+`tools/.stock_forecasts.json` (gitignored) and reused until you pass `--refit`. **Output only, deliberately.** The team's dashboards and
 their code stay private; what is published is a table of run value by outcome,
 count, outs and base state, which carries no player, game or date. Keep it that
 way when regenerating: the check is that nothing identifying anybody ends up in

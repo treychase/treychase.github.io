@@ -1,0 +1,4 @@
+# Build cache for tools/build_stock_dashboard.py. Fitting the universe takes a
+# few minutes; the fitted forecasts are cached here so a rebuild of the page is
+# instant. Delete it (or pass --refit) to fit again.
+tools/.stock_forecasts.json

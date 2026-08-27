@@ -25,7 +25,7 @@
    an entry without one falls back to its first paragraph.
    {
      section: "baseball" | "football" | "basketball" | "hockey"
-              | "health" | "articles" | "blogs",
+              | "health" | "markets" | "articles" | "blogs",
      title:   "Project name",
      summary: "The one line the card shows.",   // the rest opens on click
      year:    "2026",
@@ -261,6 +261,27 @@ window.SITE_DATA = {
       stack: "Python, PyMC, XGBoost, SHAP, Streamlit, Docker",
       links: [
         { label: "Read the notebook", url: "projects/velocity-projection.html", primary: true }
+      ],
+      files: []
+    },
+
+    /* ---------------- MARKETS ---------------- */
+    {
+      section: "markets",
+      title: "Bayesian stock forecasting",
+      summary: "A week-ahead price distribution for a universe of stocks. The interval is the product, not the point.",
+      year: "2026",
+      tags: ["Course project, rewritten"],
+      status: "",
+      body: [
+        "A local-level dynamic linear model on log prices, fit by Gibbs sampler: forward-filter backward-sample for the latent level, conjugate inverse-gamma draws for the observation and state variances. What comes out for each ticker is not a number but a distribution, the posterior predictive price five trading days ahead, and the universe is ranked by expected one-week return into projected top and bottom movers.",
+        "The point forecast from a local-level model is, by construction, roughly where the price already is. That is the honest answer for a random walk, and it is why the useful output is the width of the band rather than the line down its middle: the interval widens with the horizon, and how fast it widens is what the model actually learned from that ticker's history.",
+        "It began as an R and Quarto course project on a single stock and was rewritten in Python as a universe-wide engine with a dashboard and continuous integration. Every network call funnels through one module and a bundled sample dataset backs the tests, so the whole thing runs with no API access at all — which is exactly what the dashboard here is built from."
+      ],
+      stack: "Python, NumPy, pandas, Streamlit, Plotly",
+      links: [
+        { label: "Open the dashboard", url: "projects/stock-forecast-dashboard.html", primary: true },
+        { label: "View code", url: "https://github.com/treychase/stock-time-series" }
       ],
       files: []
     }
