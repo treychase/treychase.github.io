@@ -122,6 +122,7 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
         <span>Projected <b id="s-fore">&mdash;</b></span>
         <span>95% interval <b id="s-int">&mdash;</b></span>
         <span>Expected <b id="s-ret">&mdash;</b></span>
+        <span>Interval width <b id="s-band">&mdash;</b></span>
       </div>
     </div>
 
@@ -130,6 +131,8 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
       <table id="top"></table>
       <h2>Projected bottom 5</h2>
       <table id="bottom"></table>
+      <h2>Widest interval</h2>
+      <table id="widest"></table>
     </div>
   </div>
 
@@ -140,7 +143,11 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     page was built. A local-level model says the best guess for next week is
     roughly where the price is now; what it is actually good for is the width of
     the interval around that, which is why the fan matters more here than the
-    line down its middle. Nothing here is investment advice.
+    line down its middle. The projected movers make that concrete: across the
+    whole universe the expected one-week returns span a few hundredths of a
+    percent, while the 95 percent interval runs to about a sixth of the price.
+    The ranking is noise; the interval is the answer. Nothing here is
+    investment advice.
   </div>
 </main>
 
@@ -279,6 +286,8 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     var r = document.getElementById('s-ret');
     r.textContent = pct(t.ret);
     r.className = t.ret >= 0 ? 'up' : 'down';
+    document.getElementById('s-band').textContent =
+      '\u00b1' + (band(cur) / 2).toFixed(1) + '% of price';
     document.getElementById('sub').textContent =
       cur + ' · ' + dates[0] + ' to ' + dates[n - 1] + ' · ' + fan.length + ' trading days ahead';
 
@@ -287,17 +296,29 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     });
   }
 
+  /* the 95% interval a week out, as a percentage of the current price */
+  function band(k) {
+    var t = D.tickers[k], f = t.fan[t.fan.length - 1];
+    return (f[2] - f[0]) / t.last * 100;
+  }
+
   function movers() {
     var rows = names.map(function (k) { return {t: k, r: D.tickers[k].ret}; })
                     .sort(function (a, b) { return b.r - a.r; });
-    function fill(id, list) {
+    function fill(id, list, fmt, cls) {
       document.getElementById(id).innerHTML = list.map(function (x) {
         return '<tr data-t="' + x.t + '"><td>' + x.t + '</td>'
-             + '<td class="pct ' + (x.r >= 0 ? 'up' : 'down') + '">' + pct(x.r) + '</td></tr>';
+             + '<td class="pct ' + cls(x) + '">' + fmt(x) + '</td></tr>';
       }).join('');
     }
-    fill('top', rows.slice(0, 5));
-    fill('bottom', rows.slice(-5).reverse());
+    var signed = function (x) { return x.r >= 0 ? 'up' : 'down'; };
+    fill('top', rows.slice(0, 5), function (x) { return pct(x.r); }, signed);
+    fill('bottom', rows.slice(-5).reverse(), function (x) { return pct(x.r); }, signed);
+
+    var wide = names.map(function (k) { return {t: k, r: band(k)}; })
+                    .sort(function (a, b) { return b.r - a.r; }).slice(0, 5);
+    fill('widest', wide, function (x) { return '\u00b1' + (x.r / 2).toFixed(1) + '%'; },
+         function () { return ''; });
   }
 
   var sel = document.getElementById('ticker');
