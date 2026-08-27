@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projected True Shooting &middot; Trey Chase</title>
+<meta name="description" content="What every NBA player is likely to shoot next, not what he shot: true shooting reconstructed from tracking data and pooled toward each player's archetype, with the pooling constant fitted out of sample.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#ECEFE6;--panel:#E3E7DB;--ink:#14201B;--muted:#4B5A52;--faint:#7D8A82;
+  --field:#1F5C43;--field-deep:#153F2E;--gold:#DFA22C;
+  --line:rgba(20,32,27,.16);--line-soft:rgba(20,32,27,.08);
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Helvetica Neue",Arial,sans-serif;
+  /* Two categorical data hues, validated against this paper surface: adjacent
+     CVD delta-E 21.9, both inside the lightness band and over 3:1 contrast.
+     The site's own green is chrome, not a mark - it reads gray at data size. */
+  --pooled:#2166AC;--raw:#B35806;
+  --team:#1F5C43;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
+.bar{
+  position:sticky;top:0;z-index:20;background:var(--field);
+  border-bottom:1px solid var(--field-deep);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 22px;font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.bar a{color:rgba(236,239,230,.75);text-decoration:none}
+.bar a:hover{color:var(--paper)}
+.bar .who{color:var(--paper);font-weight:500}
+main{max-width:1120px;margin:0 auto;padding:22px}
+h1{font-size:clamp(1.3rem,3vw,1.9rem);font-weight:800;letter-spacing:-.02em;
+   margin:0 0 6px;text-transform:uppercase}
+.sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+     color:var(--muted);margin:0 0 18px}
+p.intro{font-size:16px;line-height:1.6;max-width:70ch;margin:0 0 22px}
+h2{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+   color:var(--muted);font-weight:700;margin:0 0 12px}
+
+/* ---- stat tiles ------------------------------------------------------ */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:1px;
+       background:var(--line);border:1px solid var(--line);margin-bottom:30px}
+.tile{background:var(--paper);padding:16px 18px}
+.tile .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+         color:var(--muted);display:block;margin-bottom:6px}
+.tile .v{font-size:1.85rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+         line-height:1.05}
+.tile .n{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:6px}
+
+/* ---- controls + card -------------------------------------------------- */
+.controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:16px}
+.controls label{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+                text-transform:uppercase;color:var(--muted)}
+select{font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:999px;
+       border:1px solid var(--line);background:var(--paper);color:var(--ink);max-width:100%}
+.card{display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+      border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+      padding:18px 0;margin-bottom:26px}
+.shot-head{height:118px;width:161px;flex:0 0 auto;border-radius:6px;
+  background-color:var(--team);background-size:cover,cover;
+  background-position:center top,center;background-repeat:no-repeat,no-repeat}
+.who-block{flex:1 1 220px;min-width:0}
+.who-block .nm{font-size:clamp(1.3rem,3.4vw,1.9rem);font-weight:800;letter-spacing:-.02em;
+               line-height:1.1;margin:0 0 4px}
+.who-block .tm{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+               text-transform:uppercase;color:var(--muted)}
+.chip{display:inline-block;margin-top:9px;padding:5px 14px;border-radius:999px;
+      background:var(--team);color:#fff;font-family:var(--mono);font-size:10.5px;
+      letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.chip.none{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+
+/* the player's own interval, drawn to scale */
+.gauge{margin:0 0 4px}
+.gauge .rail{position:relative;height:116px}
+.gauge .axis{position:absolute;left:0;right:0;top:62px;height:1px;background:var(--line)}
+.gauge .band{position:absolute;top:44px;height:18px;border-radius:3px;
+             background:rgba(33,102,172,.20);
+             border-left:1px solid rgba(33,102,172,.5);
+             border-right:1px solid rgba(33,102,172,.5)}
+.gauge .pt{position:absolute;top:38px;height:30px;border-radius:2px}
+.gauge .pt.proj{width:8px;margin-left:-4px;background:var(--pooled);
+                box-shadow:0 0 0 2px var(--paper)}
+.gauge .pt.shot{width:10px;margin-left:-5px;background:transparent;
+                border:2px solid var(--faint);border-radius:50%;
+                height:10px;top:48px}
+.gauge .lab{position:absolute;font-family:var(--mono);font-size:11px;
+            white-space:nowrap;transform:translateX(-50%);text-align:center;line-height:1.35}
+.gauge .lab .n{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+               color:var(--muted)}
+.gauge .lab.proj{top:2px;color:var(--ink);font-weight:700;font-size:15px}
+.gauge .lab.shot{top:88px;color:var(--muted)}
+.gauge .stem{position:absolute;width:1px;background:var(--line)}
+.gauge .tick{position:absolute;top:62px;height:5px;width:1px;background:var(--line)}
+.gauge .tickl{position:absolute;top:70px;font-family:var(--mono);font-size:9.5px;
+              color:var(--faint);transform:translateX(-50%)}
+.split{font-size:14.5px;line-height:1.6;margin:8px 0 0;color:var(--ink)}
+.split b{font-variant-numeric:tabular-nums}
+
+/* ---- charts ----------------------------------------------------------- */
+.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:30px}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+.panel{min-width:0}
+canvas{max-width:100%;height:auto;display:block}
+svg{max-width:100%;height:auto;display:block}
+.legend{display:flex;align-items:center;gap:16px;margin-top:12px;flex-wrap:wrap;
+        font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+        color:var(--muted)}
+.legend i{width:12px;height:12px;border-radius:2px;display:inline-block;vertical-align:-2px;
+          margin-right:6px;font-style:normal}
+.legend i.hollow{background:transparent;border:2px solid var(--faint);border-radius:50%}
+.legend i.solid{background:var(--pooled);border-radius:50%}
+.caption{font-size:13.5px;line-height:1.55;color:var(--muted);margin:12px 0 0;max-width:64ch}
+
+/* grouped bars, drawn in HTML so every number is real text */
+.bars{margin-top:2px}
+.grp{margin-bottom:16px}
+.grp .lb{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+         color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+.b{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.b .fill{height:15px;border-radius:0 3px 3px 0;box-shadow:2px 0 0 0 var(--paper)}
+.b .v{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.gain{font-family:var(--mono);font-size:10.5px;color:var(--pooled);font-weight:700}
+
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line-soft)}
+thead th{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+         color:var(--muted);font-weight:700;border-bottom:1px solid var(--line)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px}
+tr.on td{background:var(--panel);font-weight:700}
+.tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .12s ease;
+     background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;
+     padding:7px 10px;border-radius:4px;z-index:50;line-height:1.5;white-space:nowrap}
+.note{border-left:3px solid var(--gold);background:rgba(223,162,44,.1);
+      padding:14px 16px;margin:30px 0 0;font-size:15px;line-height:1.55;max-width:70ch}
+.note b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+        text-transform:uppercase;margin-bottom:6px;color:var(--field-deep)}
+.note code{font-family:var(--mono);font-size:13.5px;background:rgba(20,32,27,.06);
+           padding:1px 5px;border-radius:3px}
+hr.sep{border:0;border-top:1px solid var(--line);margin:36px 0 26px}
+footer{border-top:1px solid var(--line);margin-top:44px;padding:24px 22px 40px;
+       font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+       color:var(--muted);display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between}
+footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a href="../index.html#basketball">&#8249;&nbsp;&nbsp;Back to projects</a>
+  <span class="who">Projected true shooting</span>
+</div>
+
+<main>
+  <h1>Projected true shooting</h1>
+  <p class="sub" id="sub">2025&#8209;26 season</p>
+
+  <p class="intro">
+    What a player <em>shot</em> and what he is likely to shoot <em>next</em> are
+    different questions, and they come apart most for exactly the players a front
+    office is deciding about. A rotation big with 180 attempts at 64% is mostly
+    telling you about variance. This projects every player's true shooting by
+    pulling what he shot toward the players who are used the way he is used, by
+    an amount his volume decides &mdash; and the amount is fitted out of sample,
+    not chosen.
+  </p>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="controls">
+    <label for="team">Team</label>
+    <select id="team"></select>
+    <label for="player">Player</label>
+    <select id="player"></select>
+  </div>
+
+  <div class="card">
+    <div class="shot-head" id="head"></div>
+    <div class="who-block">
+      <div class="nm" id="pname">&mdash;</div>
+      <div class="tm" id="pteam"></div>
+      <span class="chip" id="parch"></span>
+    </div>
+  </div>
+
+  <div class="gauge">
+    <div class="rail" id="rail"></div>
+    <div class="legend">
+      <span><i class="hollow"></i>What he shot</span>
+      <span><i class="solid"></i>Projected, with its 95% interval</span>
+    </div>
+  </div>
+  <p class="split" id="split"></p>
+
+  <hr class="sep">
+
+  <div class="cols">
+    <div class="panel">
+      <h2>Every player, and how far he moves</h2>
+      <canvas id="fan" width="1180" height="720"></canvas>
+      <div class="legend">
+        <span><i class="hollow"></i>What he shot</span>
+        <span><i class="solid"></i>Projected</span>
+        <span id="fansel" style="color:var(--ink)"></span>
+      </div>
+      <p class="caption">
+        Each player is one pair of marks joined by a line: what he shot, and what
+        the model projects. Out on the right the two sit on top of each other
+        &mdash; a thousand attempts have already said what a player is. The fan
+        opens on the left, where a season is too short to tell a hot stretch from
+        a shooter. Attempts are on a log scale so that left-hand half is legible.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h2>Where each archetype shoots from</h2>
+      <table id="groups"><thead><tr>
+        <th>Archetype</th><th style="text-align:right">Players</th>
+        <th style="text-align:right">Pooled TS%</th>
+      </tr></thead><tbody></tbody></table>
+      <p class="caption" id="groupcap"></p>
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <h2>Does the pooling actually help?</h2>
+  <div class="cols">
+    <div class="panel">
+      <canvas id="curve" width="1000" height="440"></canvas>
+      <p class="caption" id="curvecap"></p>
+    </div>
+    <div class="panel">
+      <div class="bars" id="buckets"></div>
+      <div class="legend">
+        <span><i style="background:var(--raw)"></i>His own number alone</span>
+        <span><i style="background:var(--pooled)"></i>Pooled</span>
+      </div>
+      <p class="caption" id="bucketcap"></p>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Where the free throws come from</b>
+    True shooting needs free throws and these pulls carry no box score, but they
+    carry enough to recover one exactly: season points come from the possessions
+    tracking and every made field goal comes from the shot chart, so
+    <code>FTM = POINTS &minus; (2&middot;FGM + FG3M)</code> is arithmetic rather
+    than estimation, and it comes out non&#8209;negative for all
+    <span id="nplayers">450</span> players. Turning makes into attempts needs a
+    free throw percentage, and the tracking pulls carry free throws for the fouls
+    they do track &mdash; drives, paint, post and elbow touches, about half of a
+    player's trips, shot from the same line by the same player. That percentage is
+    itself pooled toward the league first, for the same reason as everything else
+    here: nine tracked makes should not buy a player a perfect stroke.
+  </div>
+</main>
+
+<div class="tip" id="tip"></div>
+
+<footer>
+  <span>&copy; 2026 Trey Chase</span>
+  <span><a href="../index.html">Back to the site</a></span>
+</footer>
+
+<script>
+(function () {
+var D = {"season":"2025-26","k":140.0,"league":0.5826,"tau":0.04,"ftLeague":0.775,"ftPrior":26.7,"teams":{"ATL":{"name":"Atlanta Hawks","color":"#E03A3E","players":[1642854,1627741,203468,1631132,1630557,1630700,1629216,1630552,1629111,1630228,1630811,1631243,1629638,1630168,1642484,1628396,1642258]},"BOS":{"name":"Boston Celtics","color":"#007A33","players":[1631248,1642864,1627759,1628369,1630568,1629674,202696,1630202,1631199,1630573]},"BKN":{"name":"Brooklyn Nets","color":"#000000","players":[1642879,1643052,1642874,1630549,1642962,1630604,1642856,1630592,1641869,1629008,1629651,1641730,1642849,1630534,1629611,1630623,1630533]},"CHA":{"name":"Charlotte Hornets","color":"#1D1160","players":[1641706,1629632,1629684,1630182,1642851,1642862,1628970,1631217,1641790,1626192,1641750,1642883,1642275,1630544]},"CHI":{"name":"Chicago Bulls","color":"#CE1141","players":[1629014,1629012,1627824,1630171,1631093,1630188,1630581,1642950,1631159,1630644,1641824,1630208,1630172,1642265,1630200,1642530,1628380]},"CLE":{"name":"Cleveland Cavaliers","color":"#860038","players":[1641854,1629731,203471,1628378,1630596,201935,1642281,1631165,1626204,1629622,1641772,1630241,1628418,1642878]},"DAL":{"name":"Dallas Mavericks","color":"#00538C","players":[1642358,1630314,1628997,1642843,1629655,203939,1630526,1642967,203114,202691,1631108,1630619,1630230,1629023,1642948]},"DEN":{"name":"Denver Nuggets","color":"#0E2240","players":[203932,1628971,1629661,1631128,1641747,1629618,1627750,202685,1631124,1642354,203999,1631212,1642461,203501,1626145,1630192]},"DET":{"name":"Detroit Pistons","color":"#C8102E","players":[1641709,1630595,1627747,1642404,1642450,1629130,1630191,1629750,1628989,1631204,1630194,1641842,202699]},"GSW":{"name":"Golden State Warriors","color":"#1D428A","players":[201143,1641764,1629001,203110,1627780,1630611,202710,204001,1643018,1642502,1630541,1631466,1630311,1642366,201939,1642954]},"HOU":{"name":"Houston Rockets","color":"#CE1141","players":[1628988,1630578,1641708,203991,1627827,1631120,1631095,1630256,201145,201142,1642263,203500,1631106]},"IND":{"name":"Indiana Pacers","color":"#002D62","players":[1630174,1629614,1641767,1630679,1629726,1627826,1641771,1641716,1630643,1642277,1642880,1641738,1630695,1630167,1627783,1631245,204456,1643007]},"LAC":{"name":"LA Clippers","color":"#C8102E","players":[1631097,203992,201572,1642353,101108,1629636,1630543,1628381,1641757,202695,1642920,1627739,201587,1642949]},"LAL":{"name":"Los Angeles Lakers","color":"#552583","players":[1630559,1642355,1642261,1629028,1631166,1629020,1629637,2544,1629029,1628379,203935,1628467,1641733,1629060]},"MEM":{"name":"Memphis Grizzlies","color":"#5D76A9","players":[1642380,1642285,1642907,1641727,1630610,1641713,1629630,1642942,1642914,1642377,203484,1631351,1641765,1641712,1630583,1630590,1641707,1643253,1629660,1631174,1642383,1641744]},"MIA":{"name":"Miami Heat","color":"#98002E","players":[203952,1628389,1630558,1642857,1642276,1642352,1642066,1631107,1626181,1641796,1631323,1629639]},"MIL":{"name":"Milwaukee Bucks","color":"#00471B","players":[1631260,1641748,1626171,1630560,1630175,1642504,203914,1629018,203507,1630579,1629645,1628398,1626167,1631172,1631250,1631157,1627752]},"MIN":{"name":"Minnesota Timberwolves","color":"#0C2340","players":[1630162,1630245,1630538,1630183,1641740,1642866,1641763,203944,203937,201144,1629675,203497,1630545]},"NOP":{"name":"New Orleans Pelicans","color":"#0C2340","players":[1631121,1627749,1642852,1630529,1642847,1641722,1629673,1631255,1626172,1642877,1630180,1630530,1642274,1629627]},"NYK":{"name":"New York Knicks","color":"#006BB6","players":[1630574,1631110,203903,1630631,1628404,1626157,1629013,1628969,1630540,1629011,1642885,1628384,1642278]},"OKC":{"name":"Oklahoma City Thunder","color":"#007AC1","players":[1630598,1642349,1627936,1642382,1642964,1641717,1631096,1628392,1630198,1631114,1642272,1631119,1629026,1629652,1642260,1628983]},"ORL":{"name":"Orlando Magic","color":"#0077C0","players":[1641710,1630532,1629048,1630591,1631288,1642859,1641724,1628975,1628371,1629021,1642869,1631094,1641783,1628976]},"PHI":{"name":"Philadelphia 76ers","color":"#006BB6","players":[1641737,203083,1626166,1631207,1631230,1631133,203954,1642348,1626162,1630699,202331,1629656,1630570,1631213,1630178,1642845]},"PHX":{"name":"Phoenix Suns","color":"#1D1160","players":[1629599,1631221,1626164,1628415,1628960,1630587,1631123,1630692,1642863,1631109,1642345,1642853,1626220,1642346]},"POR":{"name":"Portland Trail Blazers","color":"#E03A3E","players":[1631104,1631126,1642959,1630166,1642270,1641871,203924,1631200,1629680,1629057,1630703,1631101,1631321,1641739,1630249,1642905]},"SAC":{"name":"Sacramento Kings","color":"#5A2D81","players":[1631342,1629631,201942,1642269,1627734,203926,1629234,1642928,1631099,1630165,1628370,1642875,1642363,1630173,201566,203897]},"SAS":{"name":"San Antonio Spurs","color":"#C4CED4","players":[1642868,1628368,1630170,1642844,203084,1629162,1629640,203482,1628436,1642264,1641705]},"TOR":{"name":"Toronto Raptors","color":"#CE1141","players":[1630639,1627742,1642867,1641711,1630193,1642266,1642347,1642419,1629628,1630572,1630567,1631218]},"UTA":{"name":"Utah Jazz","color":"#002B5C","players":[1642846,1643016,1642396,1641729,1642262,1641989,1642268,1628991,1629723,203994,1631113,201567,1641718,1642271,1628374,1631131,1629004,1631246]},"WAS":{"name":"Washington Wizards","color":"#002B5C","players":[1642259,203076,1630264,1641731,1642267,1641715,1626156,1630702,1642364,1630551,1642273,1641778,1631103,1630536,1629027,1642848,1641774,1642860]}},"players":{"1630579":{"n":"Jericho Sims","t":"MIL","gp":67,"min":1318,"pts":334,"fga":185,"fta":63,"ftp":0.7,"tsa":212.7,"ts":0.7853,"pr":0.7292,"se":0.0252,"w":0.603,"g":0.6441,"a":0},"1641750":{"n":"Ryan Kalkbrenner","t":"CHA","gp":69,"min":1479,"pts":521,"fga":291,"fta":114,"ftp":0.7307,"tsa":341.0,"ts":0.764,"pr":0.7291,"se":0.0216,"w":0.7089,"g":0.6441,"a":0},"1629637":{"n":"Jaxson Hayes","t":"LAL","gp":66,"min":1207,"pts":497,"fga":262,"fta":145,"ftp":0.6767,"tsa":325.7,"ts":0.7629,"pr":0.7272,"se":0.0219,"w":0.6994,"g":0.6441,"a":0},"1629057":{"n":"Robert Williams III","t":"POR","gp":59,"min":1008,"pts":397,"fga":250,"fta":53,"ftp":0.6444,"tsa":273.2,"ts":0.7265,"pr":0.6986,"se":0.0233,"w":0.6612,"g":0.6441,"a":0},"1629011":{"n":"Mitchell Robinson","t":"NYK","gp":60,"min":1175,"pts":340,"fga":206,"fta":79,"ftp":0.5331,"tsa":240.7,"ts":0.7064,"pr":0.6835,"se":0.0243,"w":0.6322,"g":0.6441,"a":0},"1629048":{"n":"Goga Bitadze","t":"ORL","gp":64,"min":972,"pts":375,"fga":225,"fta":96,"ftp":0.7194,"tsa":267.2,"ts":0.7017,"pr":0.6819,"se":0.0235,"w":0.6562,"g":0.6441,"a":0},"1631255":{"n":"Karlo Matkovi\u0107","t":"NOP","gp":62,"min":912,"pts":352,"fga":235,"fta":39,"ftp":0.7632,"tsa":252.3,"ts":0.6976,"pr":0.6785,"se":0.0239,"w":0.6431,"g":0.6441,"a":0},"1628436":{"n":"Luke Kornet","t":"SAS","gp":68,"min":1430,"pts":444,"fga":272,"fta":113,"ftp":0.8312,"tsa":321.8,"ts":0.69,"pr":0.6761,"se":0.022,"w":0.6968,"g":0.6441,"a":0},"1629655":{"n":"Daniel Gafford","t":"DAL","gp":55,"min":1195,"pts":524,"fga":316,"fta":151,"ftp":0.7301,"tsa":382.3,"ts":0.6853,"pr":0.6743,"se":0.0207,"w":0.732,"g":0.6441,"a":0},"203939":{"n":"Dwight Powell","t":"DAL","gp":63,"min":904,"pts":210,"fga":101,"fta":111,"ftp":0.7,"tsa":150.0,"ts":0.6999,"pr":0.6729,"se":0.0278,"w":0.5173,"g":0.6441,"a":0},"1629028":{"n":"Deandre Ayton","t":"LAL","gp":72,"min":1958,"pts":897,"fga":601,"fta":136,"ftp":0.6704,"tsa":660.7,"ts":0.6788,"pr":0.6727,"se":0.0167,"w":0.8252,"g":0.6441,"a":0},"1631109":{"n":"Mark Williams","t":"PHX","gp":60,"min":1416,"pts":700,"fga":438,"fta":176,"ftp":0.7672,"tsa":515.4,"ts":0.6791,"pr":0.6716,"se":0.0185,"w":0.7864,"g":0.6441,"a":0},"1630568":{"n":"Luka Garza","t":"BOS","gp":69,"min":1118,"pts":557,"fga":357,"fta":119,"ftp":0.7594,"tsa":409.1,"ts":0.6807,"pr":0.6714,"se":0.0202,"w":0.7451,"g":0.6441,"a":0},"1629674":{"n":"Neemias Queta","t":"BOS","gp":76,"min":1926,"pts":776,"fga":499,"fta":169,"ftp":0.7273,"tsa":573.4,"ts":0.6766,"pr":0.6703,"se":0.0177,"w":0.8038,"g":0.6441,"a":0},"1642949":{"n":"Yanic Konan Niederh\u00e4user","t":"LAC","gp":41,"min":424,"pts":176,"fga":100,"fta":60,"ftp":0.7798,"tsa":126.5,"ts":0.6955,"pr":0.6685,"se":0.029,"w":0.4747,"g":0.6441,"a":0},"203999":{"n":"Nikola Joki\u0107","t":"DEN","gp":65,"min":2265,"pts":1799,"fga":1132,"fta":472,"ftp":0.8449,"tsa":1339.8,"ts":0.6714,"pr":0.6651,"se":0.0123,"w":0.9054,"g":0.6046,"a":1},"203497":{"n":"Rudy Gobert","t":"MIN","gp":76,"min":2380,"pts":829,"fga":491,"fta":291,"ftp":0.5463,"tsa":619.1,"ts":0.6696,"pr":0.6649,"se":0.0172,"w":0.8156,"g":0.6441,"a":0},"1642866":{"n":"Joan Beringer","t":"MIN","gp":40,"min":314,"pts":156,"fga":98,"fta":35,"ftp":0.7329,"tsa":113.6,"ts":0.6866,"pr":0.6631,"se":0.0297,"w":0.448,"g":0.6441,"a":0},"1628379":{"n":"Luke Kennard","t":"LAL","gp":78,"min":1681,"pts":652,"fga":443,"fta":75,"ftp":0.8412,"tsa":476.0,"ts":0.6849,"pr":0.661,"se":0.0191,"w":0.7727,"g":0.5795,"a":4},"1630543":{"n":"Isaiah Jackson","t":"LAC","gp":55,"min":908,"pts":370,"fga":237,"fta":93,"ftp":0.7318,"tsa":277.9,"ts":0.6657,"pr":0.6585,"se":0.0232,"w":0.665,"g":0.6441,"a":0},"1628983":{"n":"Shai Gilgeous-Alexander","t":"OKC","gp":68,"min":2259,"pts":2117,"fga":1321,"fta":628,"ftp":0.8603,"tsa":1597.2,"ts":0.6627,"pr":0.657,"se":0.0114,"w":0.9194,"g":0.591,"a":2},"1631217":{"n":"Moussa Diabat\u00e9","t":"CHA","gp":73,"min":1899,"pts":575,"fga":363,"fta":166,"ftp":0.6986,"tsa":436.1,"ts":0.6593,"pr":0.6556,"se":0.0197,"w":0.757,"g":0.6441,"a":0},"1642345":{"n":"Oso Ighodaro","t":"PHX","gp":82,"min":1808,"pts":531,"fga":366,"fta":86,"ftp":0.6142,"tsa":404.0,"ts":0.6572,"pr":0.6538,"se":0.0203,"w":0.7426,"g":0.6441,"a":0},"1630695":{"n":"Micah Potter","t":"IND","gp":47,"min":908,"pts":458,"fga":293,"fta":101,"ftp":0.8457,"tsa":337.2,"ts":0.6791,"pr":0.6522,"se":0.0217,"w":0.7066,"g":0.5876,"a":3},"203507":{"n":"Giannis Antetokounmpo","t":"MIL","gp":36,"min":1039,"pts":993,"fga":598,"fta":354,"ftp":0.6554,"tsa":753.7,"ts":0.6587,"pr":0.6502,"se":0.0158,"w":0.8434,"g":0.6046,"a":1},"1630194":{"n":"Paul Reed","t":"DET","gp":65,"min":901,"pts":504,"fga":339,"fta":109,"ftp":0.6698,"tsa":387.0,"ts":0.6512,"pr":0.6493,"se":0.0206,"w":0.7343,"g":0.6441,"a":0},"1641737":{"n":"Adem Bona","t":"PHI","gp":71,"min":1234,"pts":344,"fga":220,"fta":101,"ftp":0.795,"tsa":264.3,"ts":0.6508,"pr":0.6485,"se":0.0235,"w":0.6537,"g":0.6441,"a":0},"1631131":{"n":"Oscar Tshiebwe","t":"UTA","gp":27,"min":448,"pts":211,"fga":145,"fta":39,"ftp":0.6984,"tsa":162.0,"ts":0.6512,"pr":0.6479,"se":0.0272,"w":0.5364,"g":0.6441,"a":0},"1631096":{"n":"Chet Holmgren","t":"OKC","gp":69,"min":1997,"pts":1181,"fga":779,"fta":286,"ftp":0.7864,"tsa":904.9,"ts":0.6526,"pr":0.6439,"se":0.0146,"w":0.866,"g":0.5876,"a":3},"1630549":{"n":"Day'Ron Sharpe","t":"BKN","gp":62,"min":1160,"pts":540,"fga":356,"fta":151,"ftp":0.6809,"tsa":422.6,"ts":0.639,"pr":0.6402,"se":0.02,"w":0.7511,"g":0.6441,"a":0},"1641765":{"n":"Olivier-Maxence Prosper","t":"MEM","gp":53,"min":984,"pts":530,"fga":350,"fta":109,"ftp":0.7923,"tsa":397.8,"ts":0.6662,"pr":0.6399,"se":0.0204,"w":0.7397,"g":0.5653,"a":5},"1630198":{"n":"Isaiah Joe","t":"OKC","gp":71,"min":1507,"pts":785,"fga":543,"fta":132,"ftp":0.8352,"tsa":601.0,"ts":0.6531,"pr":0.6392,"se":0.0174,"w":0.8111,"g":0.5795,"a":4},"1630264":{"n":"Anthony Gill","t":"WAS","gp":55,"min":951,"pts":321,"fga":215,"fta":46,"ftp":0.7435,"tsa":235.1,"ts":0.6826,"pr":0.6388,"se":0.0244,"w":0.6268,"g":0.5653,"a":5},"1628392":{"n":"Isaiah Hartenstein","t":"OKC","gp":47,"min":1137,"pts":432,"fga":296,"fta":98,"ftp":0.6503,"tsa":339.3,"ts":0.6366,"pr":0.6388,"se":0.0216,"w":0.7079,"g":0.6441,"a":0},"1630191":{"n":"Isaiah Stewart","t":"DET","gp":58,"min":1317,"pts":581,"fga":402,"fta":126,"ftp":0.7872,"tsa":457.3,"ts":0.6352,"pr":0.6373,"se":0.0194,"w":0.7656,"g":0.6441,"a":0},"1628381":{"n":"John Collins","t":"LAC","gp":69,"min":1871,"pts":935,"fga":659,"fta":151,"ftp":0.7803,"tsa":725.5,"ts":0.6443,"pr":0.6352,"se":0.0161,"w":0.8383,"g":0.5876,"a":3},"1642285":{"n":"Cam Spencer","t":"MEM","gp":72,"min":1714,"pts":798,"fga":556,"fta":143,"ftp":0.88,"tsa":619.0,"ts":0.6446,"pr":0.6347,"se":0.0172,"w":0.8155,"g":0.591,"a":2},"1641744":{"n":"Zach Edey","t":"MEM","gp":11,"min":284,"pts":150,"fga":98,"fta":31,"ftp":0.8065,"tsa":111.6,"ts":0.6718,"pr":0.6344,"se":0.0298,"w":0.4436,"g":0.6046,"a":1},"1629627":{"n":"Zion Williamson","t":"NOP","gp":62,"min":1841,"pts":1302,"fga":807,"fta":463,"ftp":0.7188,"tsa":1010.9,"ts":0.644,"pr":0.6342,"se":0.014,"w":0.8784,"g":0.5631,"a":6},"1630574":{"n":"Ariel Hukporti","t":"NYK","gp":54,"min":498,"pts":117,"fga":80,"fta":33,"ftp":0.7829,"tsa":94.6,"ts":0.6183,"pr":0.6337,"se":0.0309,"w":0.4033,"g":0.6441,"a":0},"1630559":{"n":"Austin Reaves","t":"LAL","gp":51,"min":1762,"pts":1187,"fga":762,"fta":378,"ftp":0.8552,"tsa":928.2,"ts":0.6394,"pr":0.6331,"se":0.0145,"w":0.8689,"g":0.591,"a":2},"201142":{"n":"Kevin Durant","t":"HOU","gp":78,"min":2840,"pts":2026,"fga":1376,"fta":490,"ftp":0.8319,"tsa":1591.8,"ts":0.6364,"pr":0.6327,"se":0.0114,"w":0.9192,"g":0.591,"a":2},"1629234":{"n":"Drew Eubanks","t":"SAC","gp":42,"min":552,"pts":219,"fga":156,"fta":47,"ftp":0.6773,"tsa":176.8,"ts":0.6194,"pr":0.6303,"se":0.0266,"w":0.5581,"g":0.6441,"a":0},"1630241":{"n":"Sam Merrill","t":"CLE","gp":52,"min":1377,"pts":663,"fga":484,"fta":71,"ftp":0.8286,"tsa":515.3,"ts":0.6433,"pr":0.6297,"se":0.0185,"w":0.7864,"g":0.5795,"a":4},"1642396":{"n":"Blake Hinson","t":"UTA","gp":14,"min":285,"pts":167,"fga":115,"fta":15,"ftp":0.8044,"tsa":121.6,"ts":0.6869,"pr":0.6294,"se":0.0293,"w":0.4648,"g":0.5795,"a":4},"202710":{"n":"Jimmy Butler III","t":"GSW","gp":38,"min":1182,"pts":760,"fga":462,"fta":289,"ftp":0.8576,"tsa":589.2,"ts":0.6449,"pr":0.6292,"se":0.0175,"w":0.808,"g":0.5631,"a":6},"201939":{"n":"Stephen Curry","t":"GSW","gp":43,"min":1329,"pts":1142,"fga":799,"fta":228,"ftp":0.8965,"tsa":899.1,"ts":0.6351,"pr":0.6291,"se":0.0147,"w":0.8653,"g":0.591,"a":2},"1630572":{"n":"Sandro Mamukelashvili","t":"TOR","gp":80,"min":1751,"pts":893,"fga":631,"fta":160,"ftp":0.7366,"tsa":701.5,"ts":0.6365,"pr":0.6284,"se":0.0163,"w":0.8336,"g":0.5876,"a":3},"1642867":{"n":"Collin Murray-Boyles","t":"TOR","gp":57,"min":1246,"pts":484,"fga":342,"fta":108,"ftp":0.6587,"tsa":389.4,"ts":0.6214,"pr":0.6274,"se":0.0206,"w":0.7356,"g":0.6441,"a":0},"1642851":{"n":"Kon Knueppel","t":"CHA","gp":81,"min":2551,"pts":1498,"fga":1084,"fta":228,"ftp":0.8543,"tsa":1184.4,"ts":0.6324,"pr":0.6268,"se":0.013,"w":0.8943,"g":0.5795,"a":4},"1642504":{"n":"Cormac Ryan","t":"MIL","gp":11,"min":271,"pts":157,"fga":102,"fta":29,"ftp":0.819,"tsa":114.9,"ts":0.6832,"pr":0.6263,"se":0.0296,"w":0.4508,"g":0.5795,"a":4},"202685":{"n":"Jonas Valanciunas","t":"DEN","gp":65,"min":871,"pts":567,"fga":390,"fta":133,"ftp":0.7904,"tsa":448.5,"ts":0.6322,"pr":0.6256,"se":0.0195,"w":0.7621,"g":0.6046,"a":1},"202695":{"n":"Kawhi Leonard","t":"LAC","gp":65,"min":2085,"pts":1813,"fga":1258,"fta":421,"ftp":0.8808,"tsa":1443.3,"ts":0.6281,"pr":0.6248,"se":0.0119,"w":0.9116,"g":0.591,"a":2},"1628396":{"n":"Tony Bradley","t":"ATL","gp":41,"min":451,"pts":162,"fga":117,"fta":40,"ftp":0.8085,"tsa":134.4,"ts":0.6026,"pr":0.6238,"se":0.0286,"w":0.4898,"g":0.6441,"a":0},"1629130":{"n":"Duncan Robinson","t":"DET","gp":77,"min":2113,"pts":939,"fga":698,"fta":103,"ftp":0.8026,"tsa":743.5,"ts":0.6315,"pr":0.6232,"se":0.0159,"w":0.8415,"g":0.5795,"a":4},"1630200":{"n":"Tre Jones","t":"CHI","gp":65,"min":1752,"pts":914,"fga":617,"fta":235,"ftp":0.8142,"tsa":720.2,"ts":0.6345,"pr":0.6229,"se":0.0161,"w":0.8373,"g":0.5631,"a":6},"1641705":{"n":"Victor Wembanyama","t":"SAS","gp":64,"min":1866,"pts":1600,"fga":1080,"fta":455,"ftp":0.8174,"tsa":1280.3,"ts":0.6249,"pr":0.6229,"se":0.0126,"w":0.9014,"g":0.6046,"a":1},"1631250":{"n":"Pete Nance","t":"MIL","gp":47,"min":737,"pts":254,"fga":194,"fta":5,"ftp":0.7392,"tsa":196.4,"ts":0.6467,"pr":0.6221,"se":0.0258,"w":0.5838,"g":0.5876,"a":3},"1630619":{"n":"Moussa Cisse","t":"DAL","gp":38,"min":530,"pts":170,"fga":115,"fta":61,"ftp":0.6251,"tsa":141.7,"ts":0.5996,"pr":0.6217,"se":0.0282,"w":0.5031,"g":0.6441,"a":0},"1642276":{"n":"Kel'el Ware","t":"MIA","gp":77,"min":1704,"pts":851,"fga":649,"fta":96,"ftp":0.7414,"tsa":691.1,"ts":0.6157,"pr":0.6204,"se":0.0164,"w":0.8316,"g":0.6441,"a":0},"1642875":{"n":"Maxime Raynaud","t":"SAC","gp":74,"min":1964,"pts":922,"fga":671,"fta":177,"ftp":0.7477,"tsa":748.7,"ts":0.6158,"pr":0.6202,"se":0.0159,"w":0.8425,"g":0.6441,"a":0},"1630245":{"n":"Ayo Dosunmu","t":"MIN","gp":69,"min":1881,"pts":1022,"fga":747,"fta":146,"ftp":0.8685,"tsa":811.3,"ts":0.6298,"pr":0.62,"se":0.0153,"w":0.8528,"g":0.5631,"a":6},"1631218":{"n":"Trayce Jackson-Davis","t":"TOR","gp":53,"min":496,"pts":181,"fga":124,"fta":63,"ftp":0.603,"tsa":151.7,"ts":0.5965,"pr":0.6193,"se":0.0277,"w":0.5201,"g":0.6441,"a":0},"1642863":{"n":"Khaman Maluach","t":"PHX","gp":46,"min":411,"pts":139,"fga":105,"fta":29,"ftp":0.7535,"tsa":117.8,"ts":0.5897,"pr":0.6192,"se":0.0295,"w":0.457,"g":0.6441,"a":0},"1627750":{"n":"Jamal Murray","t":"DEN","gp":75,"min":2652,"pts":1905,"fga":1360,"fta":394,"ftp":0.8782,"tsa":1533.4,"ts":0.6212,"pr":0.6187,"se":0.0116,"w":0.9163,"g":0.591,"a":2},"1631159":{"n":"Leonard Miller","t":"CHI","gp":46,"min":719,"pts":361,"fga":262,"fta":52,"ftp":0.7532,"tsa":284.8,"ts":0.6338,"pr":0.6186,"se":0.023,"w":0.6704,"g":0.5876,"a":3},"1641747":{"n":"DaRon Holmes II","t":"DEN","gp":25,"min":210,"pts":93,"fga":61,"fta":14,"ftp":0.7857,"tsa":67.2,"ts":0.6924,"pr":0.6182,"se":0.0329,"w":0.3242,"g":0.5826},"203501":{"n":"Tim Hardaway Jr.","t":"DEN","gp":80,"min":2127,"pts":1079,"fga":779,"fta":194,"ftp":0.8195,"tsa":864.4,"ts":0.6242,"pr":0.6179,"se":0.0149,"w":0.8606,"g":0.5795,"a":4},"1627780":{"n":"Gary Payton II","t":"GSW","gp":73,"min":1142,"pts":547,"fga":415,"fta":38,"ftp":0.6843,"tsa":431.7,"ts":0.6335,"pr":0.6168,"se":0.0198,"w":0.7551,"g":0.5653,"a":5},"1631260":{"n":"AJ Green","t":"MIL","gp":78,"min":2270,"pts":809,"fga":618,"fta":67,"ftp":0.7907,"tsa":647.5,"ts":0.6247,"pr":0.6167,"se":0.0169,"w":0.8222,"g":0.5795,"a":4},"1630162":{"n":"Anthony Edwards","t":"MIN","gp":61,"min":2137,"pts":1757,"fga":1231,"fta":429,"ftp":0.8106,"tsa":1419.9,"ts":0.6187,"pr":0.6162,"se":0.012,"w":0.9103,"g":0.591,"a":2},"1626157":{"n":"Karl-Anthony Towns","t":"NYK","gp":75,"min":2322,"pts":1504,"fga":1032,"fta":414,"ftp":0.8629,"tsa":1214.0,"ts":0.6194,"pr":0.6161,"se":0.0129,"w":0.8966,"g":0.5876,"a":3},"1630167":{"n":"Obi Toppin","t":"IND","gp":24,"min":424,"pts":279,"fga":199,"fta":48,"ftp":0.8807,"tsa":220.0,"ts":0.6341,"pr":0.616,"se":0.0249,"w":0.6111,"g":0.5876,"a":3},"1629060":{"n":"Rui Hachimura","t":"LAL","gp":68,"min":1927,"pts":780,"fga":597,"fta":64,"ftp":0.7816,"tsa":625.1,"ts":0.6239,"pr":0.6157,"se":0.0171,"w":0.817,"g":0.5795,"a":4},"1642928":{"n":"Dylan Cardwell","t":"SAC","gp":44,"min":907,"pts":238,"fga":179,"fta":47,"ftp":0.5501,"tsa":199.8,"ts":0.5956,"pr":0.6156,"se":0.0257,"w":0.588,"g":0.6441,"a":0},"1641757":{"n":"Jordan Miller","t":"LAC","gp":60,"min":1325,"pts":598,"fga":399,"fta":174,"ftp":0.7814,"tsa":475.6,"ts":0.6287,"pr":0.6143,"se":0.0191,"w":0.7726,"g":0.5653,"a":5},"203932":{"n":"Aaron Gordon","t":"DEN","gp":36,"min":1005,"pts":582,"fga":398,"fta":158,"ftp":0.7894,"tsa":467.7,"ts":0.6222,"pr":0.6142,"se":0.0192,"w":0.7696,"g":0.5876,"a":3},"1628418":{"n":"Thomas Bryant","t":"CLE","gp":60,"min":732,"pts":370,"fga":267,"fta":64,"ftp":0.8264,"tsa":295.2,"ts":0.6267,"pr":0.6141,"se":0.0227,"w":0.6783,"g":0.5876,"a":3},"1628384":{"n":"OG Anunoby","t":"NYK","gp":67,"min":2224,"pts":1118,"fga":804,"fta":216,"ftp":0.8453,"tsa":899.3,"ts":0.6216,"pr":0.614,"se":0.0147,"w":0.8653,"g":0.5653,"a":5},"1628380":{"n":"Zach Collins","t":"CHI","gp":10,"min":184,"pts":97,"fga":64,"fta":18,"ftp":0.7857,"tsa":71.8,"ts":0.6751,"pr":0.6139,"se":0.0325,"w":0.3391,"g":0.5826},"1642275":{"n":"Tidjane Sala\u00fcn","t":"CHA","gp":37,"min":575,"pts":222,"fga":159,"fta":36,"ftp":0.7215,"tsa":174.9,"ts":0.6348,"pr":0.6138,"se":0.0267,"w":0.5554,"g":0.5876,"a":3},"1628976":{"n":"Wendell Carter Jr.","t":"ORL","gp":78,"min":2288,"pts":922,"fga":637,"fta":247,"ftp":0.8007,"tsa":745.8,"ts":0.6181,"pr":0.6133,"se":0.0159,"w":0.842,"g":0.5876,"a":3},"1629004":{"n":"Svi Mykhailiuk","t":"UTA","gp":50,"min":1156,"pts":469,"fga":362,"fta":30,"ftp":0.8448,"tsa":375.0,"ts":0.6253,"pr":0.6129,"se":0.0209,"w":0.7282,"g":0.5795,"a":4},"1627826":{"n":"Ivica Zubac","t":"IND","gp":48,"min":1447,"pts":677,"fga":482,"fta":158,"ftp":0.6376,"tsa":551.7,"ts":0.6136,"pr":0.6117,"se":0.018,"w":0.7976,"g":0.6046,"a":1},"1629640":{"n":"Keldon Johnson","t":"SAS","gp":82,"min":1911,"pts":1081,"fga":797,"fta":185,"ftp":0.8315,"tsa":878.5,"ts":0.6153,"pr":0.6115,"se":0.0148,"w":0.8625,"g":0.5876,"a":3},"1629029":{"n":"Luka Don\u010di\u0107","t":"LAL","gp":64,"min":2289,"pts":2143,"fga":1457,"fta":662,"ftp":0.76,"tsa":1748.2,"ts":0.6129,"pr":0.6113,"se":0.0109,"w":0.9259,"g":0.591,"a":2},"1629661":{"n":"Cameron Johnson","t":"DEN","gp":54,"min":1647,"pts":660,"fga":475,"fta":131,"ftp":0.7177,"tsa":532.6,"ts":0.6196,"pr":0.6112,"se":0.0182,"w":0.7919,"g":0.5795,"a":4},"1628378":{"n":"Donovan Mitchell","t":"CLE","gp":70,"min":2342,"pts":1952,"fga":1403,"fta":433,"ftp":0.8594,"tsa":1593.5,"ts":0.6125,"pr":0.6108,"se":0.0114,"w":0.9192,"g":0.591,"a":2},"1631166":{"n":"Drew Timme","t":"LAL","gp":27,"min":235,"pts":92,"fga":66,"fta":7,"ftp":0.7246,"tsa":69.0,"ts":0.6663,"pr":0.6102,"se":0.0327,"w":0.3303,"g":0.5826},"1642270":{"n":"Donovan Clingan","t":"POR","gp":77,"min":2094,"pts":934,"fga":684,"fta":203,"ftp":0.6805,"tsa":773.2,"ts":0.604,"pr":0.6101,"se":0.0157,"w":0.8467,"g":0.6441,"a":0},"1642419":{"n":"Jamison Battle","t":"TOR","gp":61,"min":517,"pts":192,"fga":145,"fta":12,"ftp":0.7392,"tsa":150.4,"ts":0.6385,"pr":0.6101,"se":0.0278,"w":0.5178,"g":0.5795,"a":4},"1630530":{"n":"Trey Murphy III","t":"NOP","gp":66,"min":2341,"pts":1420,"fga":1050,"fta":252,"ftp":0.8663,"tsa":1160.7,"ts":0.6117,"pr":0.6082,"se":0.0131,"w":0.8924,"g":0.5795,"a":4},"1630182":{"n":"Josh Green","t":"CHA","gp":58,"min":908,"pts":249,"fga":181,"fta":32,"ftp":0.7857,"tsa":195.0,"ts":0.6385,"pr":0.6079,"se":0.0259,"w":0.5821,"g":0.5653,"a":5},"1629651":{"n":"Nic Claxton","t":"BKN","gp":69,"min":1920,"pts":810,"fga":583,"fta":211,"ftp":0.6696,"tsa":675.7,"ts":0.5994,"pr":0.6071,"se":0.0166,"w":0.8284,"g":0.6441,"a":0},"1629012":{"n":"Collin Sexton","t":"CHI","gp":68,"min":1613,"pts":1050,"fga":742,"fta":258,"ftp":0.844,"tsa":855.6,"ts":0.6136,"pr":0.6065,"se":0.015,"w":0.8594,"g":0.5631,"a":6},"1626181":{"n":"Norman Powell","t":"MIA","gp":58,"min":1717,"pts":1261,"fga":895,"fta":322,"ftp":0.8176,"tsa":1036.5,"ts":0.6083,"pr":0.6062,"se":0.0138,"w":0.881,"g":0.591,"a":2},"1642382":{"n":"Branden Carlson","t":"OKC","gp":42,"min":488,"pts":242,"fga":186,"fta":21,"ftp":0.709,"tsa":195.3,"ts":0.6195,"pr":0.6062,"se":0.0258,"w":0.5825,"g":0.5876,"a":3},"1642281":{"n":"Jaylon Tyson","t":"CLE","gp":66,"min":1777,"pts":872,"fga":670,"fta":103,"ftp":0.7661,"tsa":715.4,"ts":0.6095,"pr":0.6059,"se":0.0162,"w":0.8363,"g":0.5876,"a":3},"1641718":{"n":"Keyonte George","t":"UTA","gp":54,"min":1786,"pts":1275,"fga":881,"fta":382,"ftp":0.8821,"tsa":1049.1,"ts":0.6077,"pr":0.6057,"se":0.0137,"w":0.8823,"g":0.591,"a":2},"203897":{"n":"Zach LaVine","t":"SAC","gp":39,"min":1224,"pts":748,"fga":547,"fta":147,"ftp":0.85,"tsa":611.7,"ts":0.6114,"pr":0.6055,"se":0.0173,"w":0.8138,"g":0.5795,"a":4},"1629027":{"n":"Trae Young","t":"WAS","gp":15,"min":384,"pts":269,"fga":177,"fta":95,"ftp":0.8412,"tsa":218.8,"ts":0.6146,"pr":0.6054,"se":0.025,"w":0.6099,"g":0.591,"a":2},"1629638":{"n":"Nickeil Alexander-Walker","t":"ATL","gp":78,"min":2603,"pts":1624,"fga":1195,"fta":320,"ftp":0.8663,"tsa":1335.7,"ts":0.6079,"pr":0.6052,"se":0.0123,"w":0.9051,"g":0.5795,"a":4},"1628404":{"n":"Josh Hart","t":"NYK","gp":66,"min":1994,"pts":792,"fga":592,"fta":121,"ftp":0.745,"tsa":645.2,"ts":0.6138,"pr":0.6048,"se":0.0169,"w":0.8217,"g":0.5631,"a":6},"1628374":{"n":"Lauri Markkanen","t":"UTA","gp":42,"min":1443,"pts":1123,"fga":805,"fta":272,"ftp":0.8836,"tsa":924.5,"ts":0.6073,"pr":0.6047,"se":0.0145,"w":0.8685,"g":0.5876,"a":3},"1630188":{"n":"Jalen Smith","t":"CHI","gp":53,"min":1095,"pts":541,"fga":404,"fta":91,"ftp":0.7585,"tsa":444.0,"ts":0.6092,"pr":0.604,"se":0.0196,"w":0.7603,"g":0.5876,"a":3},"1630183":{"n":"Jaden McDaniels","t":"MIN","gp":73,"min":2316,"pts":1084,"fga":809,"fta":181,"ftp":0.8138,"tsa":888.5,"ts":0.61,"pr":0.6039,"se":0.0148,"w":0.8639,"g":0.5653,"a":5},"1631248":{"n":"Baylor Scheierman","t":"BOS","gp":77,"min":1429,"pts":427,"fga":333,"fta":34,"ftp":0.8279,"tsa":347.9,"ts":0.6137,"pr":0.6039,"se":0.0214,"w":0.713,"g":0.5795,"a":4},"201935":{"n":"James Harden","t":"CLE","gp":70,"min":2438,"pts":1652,"fga":1123,"fta":551,"ftp":0.8404,"tsa":1365.4,"ts":0.605,"pr":0.6037,"se":0.0122,"w":0.907,"g":0.591,"a":2},"1642854":{"n":"Asa Newell","t":"ATL","gp":44,"min":500,"pts":227,"fga":169,"fta":23,"ftp":0.6897,"tsa":179.2,"ts":0.6333,"pr":0.6035,"se":0.0265,"w":0.5614,"g":0.5653,"a":5},"1629660":{"n":"Ty Jerome","t":"MEM","gp":15,"min":339,"pts":295,"fga":215,"fta":61,"ftp":0.8072,"tsa":241.7,"ts":0.6102,"pr":0.6032,"se":0.0242,"w":0.6332,"g":0.591,"a":2},"203084":{"n":"Harrison Barnes","t":"SAS","gp":77,"min":1986,"pts":765,"fga":575,"fta":123,"ftp":0.831,"tsa":629.0,"ts":0.6081,"pr":0.6029,"se":0.0171,"w":0.8179,"g":0.5795,"a":4},"1642461":{"n":"Spencer Jones","t":"DEN","gp":64,"min":1417,"pts":352,"fga":262,"fta":48,"ftp":0.6421,"tsa":283.2,"ts":0.6214,"pr":0.6028,"se":0.023,"w":0.6692,"g":0.5653,"a":5},"1642914":{"n":"Javon Small","t":"MEM","gp":41,"min":830,"pts":396,"fga":288,"fta":87,"ftp":0.7805,"tsa":326.3,"ts":0.6067,"pr":0.602,"se":0.0219,"w":0.6998,"g":0.591,"a":2},"1631288":{"n":"Jamal Cain","t":"ORL","gp":40,"min":486,"pts":215,"fga":152,"fta":49,"ftp":0.8022,"tsa":173.4,"ts":0.62,"pr":0.6019,"se":0.0267,"w":0.5533,"g":0.5795,"a":4},"1630611":{"n":"Gui Santos","t":"GSW","gp":68,"min":1395,"pts":625,"fga":460,"fta":115,"ftp":0.754,"tsa":510.8,"ts":0.6118,"pr":0.6018,"se":0.0186,"w":0.7849,"g":0.5653,"a":5},"1630557":{"n":"Corey Kispert","t":"ATL","gp":58,"min":1080,"pts":532,"fga":394,"fta":98,"ftp":0.7877,"tsa":437.0,"ts":0.6087,"pr":0.6016,"se":0.0197,"w":0.7574,"g":0.5795,"a":4},"1630249":{"n":"V\u00edt Krej\u010d\u00ed","t":"POR","gp":65,"min":1392,"pts":550,"fga":429,"fta":52,"ftp":0.7273,"tsa":452.0,"ts":0.6084,"pr":0.6016,"se":0.0195,"w":0.7635,"g":0.5795,"a":4},"1642857":{"n":"Kasparas Jaku\u010dionis","t":"MIA","gp":53,"min":945,"pts":328,"fga":238,"fta":68,"ftp":0.8536,"tsa":267.9,"ts":0.6122,"pr":0.601,"se":0.0234,"w":0.6568,"g":0.5795,"a":4},"203954":{"n":"Joel Embiid","t":"PHI","gp":38,"min":1201,"pts":1021,"fga":697,"fta":349,"ftp":0.8187,"tsa":850.7,"ts":0.6001,"pr":0.6007,"se":0.015,"w":0.8587,"g":0.6046,"a":1},"1627752":{"n":"Taurean Prince","t":"MIL","gp":26,"min":611,"pts":239,"fga":191,"fta":8,"ftp":0.7907,"tsa":194.3,"ts":0.6149,"pr":0.6001,"se":0.0259,"w":0.5813,"g":0.5795,"a":4},"203924":{"n":"Jerami Grant","t":"POR","gp":57,"min":1695,"pts":1060,"fga":730,"fta":340,"ftp":0.771,"tsa":879.5,"ts":0.6026,"pr":0.5994,"se":0.0148,"w":0.8627,"g":0.5795,"a":4},"1630166":{"n":"Deni Avdija","t":"POR","gp":66,"min":2199,"pts":1598,"fga":1064,"fta":594,"ftp":0.823,"tsa":1325.4,"ts":0.6028,"pr":0.599,"se":0.0124,"w":0.9045,"g":0.5631,"a":6},"1627734":{"n":"Domantas Sabonis","t":"SAC","gp":19,"min":564,"pts":301,"fga":221,"fta":72,"ftp":0.7808,"tsa":252.6,"ts":0.5959,"pr":0.599,"se":0.0239,"w":0.6434,"g":0.6046,"a":1},"1631128":{"n":"Christian Braun","t":"DEN","gp":44,"min":1399,"pts":526,"fga":389,"fta":97,"ftp":0.8141,"tsa":431.7,"ts":0.6092,"pr":0.5985,"se":0.0198,"w":0.7551,"g":0.5653,"a":5},"1643052":{"n":"Chaney Johnson","t":"BKN","gp":17,"min":348,"pts":139,"fga":94,"fta":33,"ftp":0.8412,"tsa":108.6,"ts":0.6397,"pr":0.5978,"se":0.03,"w":0.437,"g":0.5653,"a":5},"1641774":{"n":"Tristan Vukcevic","t":"WAS","gp":49,"min":671,"pts":441,"fga":317,"fta":113,"ftp":0.7724,"tsa":366.6,"ts":0.6015,"pr":0.5977,"se":0.021,"w":0.7236,"g":0.5876,"a":3},"1629632":{"n":"Coby White","t":"CHA","gp":50,"min":1250,"pts":868,"fga":623,"fta":231,"ftp":0.8523,"tsa":724.7,"ts":0.5989,"pr":0.5976,"se":0.0161,"w":0.8381,"g":0.591,"a":2},"1630541":{"n":"Moses Moody","t":"GSW","gp":60,"min":1540,"pts":728,"fga":557,"fta":109,"ftp":0.7961,"tsa":605.1,"ts":0.6016,"pr":0.5974,"se":0.0173,"w":0.8121,"g":0.5795,"a":4},"1642266":{"n":"Ja'Kobe Walter","t":"TOR","gp":72,"min":1474,"pts":541,"fga":404,"fta":94,"ftp":0.7524,"tsa":445.5,"ts":0.6072,"pr":0.5971,"se":0.0196,"w":0.7609,"g":0.5653,"a":5},"1629111":{"n":"Jock Landale","t":"ATL","gp":68,"min":1506,"pts":718,"fga":548,"fta":116,"ftp":0.6872,"tsa":599.2,"ts":0.5991,"pr":0.5969,"se":0.0174,"w":0.8106,"g":0.5876,"a":3},"1641796":{"n":"Pelle Larsson","t":"MIA","gp":70,"min":1849,"pts":800,"fga":559,"fta":235,"ftp":0.7837,"tsa":662.3,"ts":0.6039,"pr":0.5968,"se":0.0167,"w":0.8255,"g":0.5631,"a":6},"1630643":{"n":"Jay Huff","t":"IND","gp":82,"min":1719,"pts":783,"fga":611,"fta":98,"ftp":0.8381,"tsa":654.0,"ts":0.5986,"pr":0.5966,"se":0.0168,"w":0.8237,"g":0.5876,"a":3},"1629639":{"n":"Tyler Herro","t":"MIA","gp":33,"min":1033,"pts":677,"fga":515,"fta":117,"ftp":0.8477,"tsa":566.4,"ts":0.5976,"pr":0.5963,"se":0.0178,"w":0.8018,"g":0.591,"a":2},"1629726":{"n":"Garrison Mathews","t":"IND","gp":15,"min":196,"pts":78,"fga":52,"fta":23,"ftp":0.819,"tsa":62.2,"ts":0.6269,"pr":0.5962,"se":0.0333,"w":0.3076,"g":0.5826},"1641871":{"n":"Duop Reath","t":"POR","gp":32,"min":258,"pts":94,"fga":74,"fta":6,"ftp":0.7718,"tsa":76.9,"ts":0.6116,"pr":0.5961,"se":0.0321,"w":0.3544,"g":0.5876,"a":3},"1631121":{"n":"Bryce McGowens","t":"NOP","gp":42,"min":880,"pts":340,"fga":237,"fta":93,"ftp":0.7936,"tsa":278.0,"ts":0.6114,"pr":0.596,"se":0.0231,"w":0.6651,"g":0.5653,"a":5},"1631108":{"n":"Max Christie","t":"DAL","gp":77,"min":2245,"pts":945,"fga":725,"fta":146,"ftp":0.8534,"tsa":789.4,"ts":0.5985,"pr":0.5957,"se":0.0155,"w":0.8494,"g":0.5795,"a":4},"1630596":{"n":"Evan Mobley","t":"CLE","gp":65,"min":2074,"pts":1180,"fga":859,"fta":295,"ftp":0.6099,"tsa":988.8,"ts":0.5967,"pr":0.5955,"se":0.0141,"w":0.876,"g":0.5876,"a":3},"1631119":{"n":"Jaylin Williams","t":"OKC","gp":65,"min":1277,"pts":469,"fga":352,"fta":93,"ftp":0.7882,"tsa":392.7,"ts":0.5971,"pr":0.5946,"se":0.0205,"w":0.7372,"g":0.5876,"a":3},"1630208":{"n":"Nick Richards","t":"CHI","gp":48,"min":701,"pts":276,"fga":201,"fta":97,"ftp":0.6688,"tsa":243.8,"ts":0.5661,"pr":0.5946,"se":0.0242,"w":0.6352,"g":0.6441,"a":0},"1626220":{"n":"Royce O'Neale","t":"PHX","gp":78,"min":2213,"pts":765,"fga":625,"fta":35,"ftp":0.7818,"tsa":640.2,"ts":0.5975,"pr":0.5943,"se":0.0169,"w":0.8206,"g":0.5795,"a":4},"201587":{"n":"Nicolas Batum","t":"LAC","gp":74,"min":1295,"pts":293,"fga":238,"fta":12,"ftp":0.775,"tsa":243.1,"ts":0.6026,"pr":0.5942,"se":0.0242,"w":0.6346,"g":0.5795,"a":4},"1629684":{"n":"Grant Williams","t":"CHA","gp":36,"min":711,"pts":252,"fga":183,"fta":59,"ftp":0.7422,"tsa":209.1,"ts":0.6026,"pr":0.5934,"se":0.0253,"w":0.5989,"g":0.5795,"a":4},"1629008":{"n":"Michael Porter Jr.","t":"BKN","gp":52,"min":1689,"pts":1259,"fga":958,"fta":227,"ftp":0.859,"tsa":1057.9,"ts":0.5951,"pr":0.5932,"se":0.0137,"w":0.8831,"g":0.5795,"a":4},"1629013":{"n":"Landry Shamet","t":"NYK","gp":51,"min":1171,"pts":475,"fga":364,"fta":76,"ftp":0.7124,"tsa":397.4,"ts":0.5977,"pr":0.593,"se":0.0204,"w":0.7395,"g":0.5795,"a":4},"1642920":{"n":"Kobe Sanders","t":"LAC","gp":68,"min":1351,"pts":495,"fga":384,"fta":69,"ftp":0.8295,"tsa":414.2,"ts":0.5975,"pr":0.593,"se":0.0201,"w":0.7474,"g":0.5795,"a":4},"1629622":{"n":"Max Strus","t":"CLE","gp":12,"min":288,"pts":134,"fga":106,"fta":9,"ftp":0.7857,"tsa":109.9,"ts":0.6095,"pr":0.5927,"se":0.0299,"w":0.4398,"g":0.5795,"a":4},"1630604":{"n":"E.J. Liddell","t":"BKN","gp":26,"min":349,"pts":147,"fga":111,"fta":27,"ftp":0.7693,"tsa":123.0,"ts":0.5975,"pr":0.5922,"se":0.0292,"w":0.4677,"g":0.5876,"a":3},"1642950":{"n":"Lachlan Olbrich","t":"CHI","gp":37,"min":344,"pts":89,"fga":77,"fta":24,"ftp":0.6313,"tsa":87.5,"ts":0.5088,"pr":0.5921,"se":0.0314,"w":0.3845,"g":0.6441,"a":0},"203500":{"n":"Steven Adams","t":"HOU","gp":32,"min":730,"pts":187,"fga":139,"fta":71,"ftp":0.6613,"tsa":170.3,"ts":0.5491,"pr":0.592,"se":0.0269,"w":0.5488,"g":0.6441,"a":0},"1631212":{"n":"Peyton Watson","t":"DEN","gp":54,"min":1598,"pts":789,"fga":581,"fta":192,"ftp":0.7196,"tsa":665.4,"ts":0.5929,"pr":0.592,"se":0.0167,"w":0.8262,"g":0.5876,"a":3},"1631230":{"n":"Dominick Barlow","t":"PHI","gp":71,"min":1689,"pts":545,"fga":399,"fta":125,"ftp":0.7516,"tsa":454.0,"ts":0.6002,"pr":0.592,"se":0.0194,"w":0.7643,"g":0.5653,"a":5},"1630536":{"n":"Sharife Cooper","t":"WAS","gp":41,"min":700,"pts":333,"fga":247,"fta":63,"ftp":0.7945,"tsa":274.7,"ts":0.6061,"pr":0.5916,"se":0.0232,"w":0.6624,"g":0.5631,"a":6},"1642967":{"n":"John Poulakidas","t":"DAL","gp":13,"min":253,"pts":115,"fga":91,"fta":8,"ftp":0.7907,"tsa":94.3,"ts":0.6095,"pr":0.5916,"se":0.0309,"w":0.4026,"g":0.5795,"a":4},"2544":{"n":"LeBron James","t":"LAL","gp":60,"min":1989,"pts":1256,"fga":919,"fta":309,"ftp":0.7537,"tsa":1055.0,"ts":0.5953,"pr":0.5915,"se":0.0137,"w":0.8828,"g":0.5631,"a":6},"1641713":{"n":"GG Jackson","t":"MEM","gp":55,"min":1178,"pts":686,"fga":514,"fta":148,"ftp":0.7565,"tsa":579.1,"ts":0.5923,"pr":0.5913,"se":0.0176,"w":0.8053,"g":0.5876,"a":3},"1629750":{"n":"Javonte Green","t":"DET","gp":82,"min":1446,"pts":569,"fga":414,"fta":140,"ftp":0.7524,"tsa":475.4,"ts":0.5984,"pr":0.5909,"se":0.0191,"w":0.7725,"g":0.5653,"a":5},"1641708":{"n":"Amen Thompson","t":"HOU","gp":79,"min":2953,"pts":1443,"fga":1044,"fta":387,"ftp":0.7846,"tsa":1214.5,"ts":0.5941,"pr":0.5909,"se":0.0129,"w":0.8966,"g":0.5631,"a":6},"1630545":{"n":"Terrence Shannon Jr","t":"MIN","gp":43,"min":538,"pts":241,"fga":171,"fta":69,"ftp":0.8101,"tsa":201.4,"ts":0.5983,"pr":0.5906,"se":0.0256,"w":0.5899,"g":0.5795,"a":4},"1630168":{"n":"Onyeka Okongwu","t":"ATL","gp":74,"min":2297,"pts":1123,"fga":860,"fta":206,"ftp":0.7415,"tsa":950.8,"ts":0.5906,"pr":0.5902,"se":0.0143,"w":0.8717,"g":0.5876,"a":3},"1630230":{"n":"Naji Marshall","t":"DAL","gp":74,"min":2184,"pts":1128,"fga":821,"fta":292,"ftp":0.7812,"tsa":949.4,"ts":0.594,"pr":0.5901,"se":0.0143,"w":0.8715,"g":0.5631,"a":6},"1641729":{"n":"Brice Sensabaugh","t":"UTA","gp":75,"min":1762,"pts":1116,"fga":857,"fta":201,"ftp":0.8277,"tsa":945.2,"ts":0.5903,"pr":0.5889,"se":0.0144,"w":0.871,"g":0.5795,"a":4},"1630538":{"n":"Bones Hyland","t":"MIN","gp":71,"min":1177,"pts":604,"fga":468,"fta":89,"ftp":0.7215,"tsa":507.0,"ts":0.5956,"pr":0.5886,"se":0.0186,"w":0.7836,"g":0.5631,"a":6},"201942":{"n":"DeMar DeRozan","t":"SAC","gp":77,"min":2406,"pts":1419,"fga":1005,"fta":442,"ftp":0.8459,"tsa":1199.5,"ts":0.5915,"pr":0.5885,"se":0.0129,"w":0.8955,"g":0.5631,"a":6},"1626171":{"n":"Bobby Portis Jr.","t":"MIL","gp":67,"min":1619,"pts":915,"fga":750,"fta":64,"ftp":0.7526,"tsa":778.1,"ts":0.588,"pr":0.5879,"se":0.0156,"w":0.8475,"g":0.5876,"a":3},"1642274":{"n":"Yves Missi","t":"NOP","gp":66,"min":1297,"pts":377,"fga":294,"fta":91,"ftp":0.6264,"tsa":334.0,"ts":0.5643,"pr":0.5879,"se":0.0217,"w":0.7047,"g":0.6441,"a":0},"1641790":{"n":"PJ Hall","t":"CHA","gp":19,"min":213,"pts":86,"fga":59,"fta":30,"ftp":0.7761,"tsa":72.0,"ts":0.5969,"pr":0.5874,"se":0.0325,"w":0.3397,"g":0.5826},"1630573":{"n":"Sam Hauser","t":"BOS","gp":78,"min":1934,"pts":719,"fga":601,"fta":21,"ftp":0.8091,"tsa":610.2,"ts":0.5891,"pr":0.5873,"se":0.0173,"w":0.8134,"g":0.5795,"a":4},"1629599":{"n":"Amir Coffey","t":"PHX","gp":46,"min":491,"pts":149,"fga":113,"fta":28,"ftp":0.7818,"tsa":125.4,"ts":0.5942,"pr":0.5865,"se":0.0291,"w":0.4725,"g":0.5795,"a":4},"1628969":{"n":"Mikal Bridges","t":"NYK","gp":82,"min":2692,"pts":1181,"fga":963,"fta":96,"ftp":0.8427,"tsa":1005.3,"ts":0.5874,"pr":0.5864,"se":0.014,"w":0.8778,"g":0.5795,"a":4},"1626172":{"n":"Kevon Looney","t":"NOP","gp":21,"min":308,"pts":59,"fga":60,"fta":9,"ftp":0.7551,"tsa":64.1,"ts":0.4604,"pr":0.5864,"se":0.0331,"w":0.314,"g":0.6441,"a":0},"1641824":{"n":"Matas Buzelis","t":"CHI","gp":77,"min":2248,"pts":1252,"fga":963,"fta":239,"ftp":0.784,"tsa":1067.9,"ts":0.5862,"pr":0.5863,"se":0.0136,"w":0.8841,"g":0.5876,"a":3},"1630551":{"n":"Justin Champagnie","t":"WAS","gp":69,"min":1377,"pts":597,"fga":462,"fta":96,"ftp":0.8346,"tsa":504.2,"ts":0.5921,"pr":0.5862,"se":0.0186,"w":0.7827,"g":0.5653,"a":5},"1642954":{"n":"Will Richard","t":"GSW","gp":69,"min":1377,"pts":441,"fga":346,"fta":57,"ftp":0.8022,"tsa":371.2,"ts":0.594,"pr":0.5861,"se":0.0209,"w":0.7262,"g":0.5653,"a":5},"1642066":{"n":"Myron Gardner","t":"MIA","gp":45,"min":411,"pts":163,"fga":123,"fta":25,"ftp":0.7546,"tsa":134.1,"ts":0.6079,"pr":0.5861,"se":0.0286,"w":0.4892,"g":0.5653,"a":5},"1626167":{"n":"Myles Turner","t":"MIL","gp":71,"min":1912,"pts":846,"fga":646,"fta":174,"ftp":0.7544,"tsa":722.4,"ts":0.5855,"pr":0.5859,"se":0.0161,"w":0.8377,"g":0.5876,"a":3},"1631124":{"n":"Julian Strawther","t":"DEN","gp":57,"min":861,"pts":413,"fga":319,"fta":73,"ftp":0.7805,"tsa":351.1,"ts":0.5881,"pr":0.5857,"se":0.0214,"w":0.7149,"g":0.5795,"a":4},"1631466":{"n":"Nate Williams","t":"GSW","gp":14,"min":239,"pts":112,"fga":88,"fta":16,"ftp":0.8269,"tsa":94.9,"ts":0.59,"pr":0.5856,"se":0.0309,"w":0.404,"g":0.5826},"1630639":{"n":"A.J. Lawson","t":"TOR","gp":24,"min":226,"pts":101,"fga":78,"fta":17,"ftp":0.8163,"tsa":85.5,"ts":0.5903,"pr":0.5855,"se":0.0315,"w":0.3793,"g":0.5826},"1626192":{"n":"Pat Connaughton","t":"CHA","gp":42,"min":297,"pts":110,"fga":85,"fta":17,"ftp":0.7551,"tsa":92.6,"ts":0.5941,"pr":0.5853,"se":0.031,"w":0.398,"g":0.5795,"a":4},"1629628":{"n":"RJ Barrett","t":"TOR","gp":57,"min":1726,"pts":1098,"fga":816,"fta":279,"ftp":0.7177,"tsa":938.6,"ts":0.5849,"pr":0.5853,"se":0.0144,"w":0.8702,"g":0.5876,"a":3},"204001":{"n":"Kristaps Porzi\u0146\u0123is","t":"GSW","gp":32,"min":769,"pts":533,"fga":388,"fta":164,"ftp":0.8116,"tsa":460.1,"ts":0.5792,"pr":0.5851,"se":0.0193,"w":0.7667,"g":0.6046,"a":1},"1641738":{"n":"Kobe Brown","t":"IND","gp":61,"min":962,"pts":353,"fga":271,"fta":59,"ftp":0.7958,"tsa":297.0,"ts":0.5943,"pr":0.585,"se":0.0226,"w":0.6796,"g":0.5653,"a":5},"1629656":{"n":"Quentin Grimes","t":"PHI","gp":75,"min":2206,"pts":1006,"fga":755,"fta":236,"ftp":0.8421,"tsa":859.0,"ts":0.5856,"pr":0.5847,"se":0.015,"w":0.8599,"g":0.5795,"a":4},"1630178":{"n":"Tyrese Maxey","t":"PHI","gp":70,"min":2661,"pts":1980,"fga":1501,"fta":441,"ftp":0.8427,"tsa":1695.2,"ts":0.584,"pr":0.5845,"se":0.011,"w":0.9237,"g":0.591,"a":2},"1631245":{"n":"Quenton Jackson","t":"IND","gp":49,"min":897,"pts":448,"fga":328,"fta":115,"ftp":0.85,"tsa":378.7,"ts":0.5915,"pr":0.5838,"se":0.0208,"w":0.7301,"g":0.5631,"a":6},"203944":{"n":"Julius Randle","t":"MIN","gp":79,"min":2610,"pts":1667,"fga":1207,"fta":492,"ftp":0.8095,"tsa":1423.3,"ts":0.5856,"pr":0.5836,"se":0.012,"w":0.9104,"g":0.5631,"a":6},"1628371":{"n":"Jonathan Isaac","t":"ORL","gp":52,"min":521,"pts":134,"fga":109,"fta":46,"ftp":0.753,"tsa":129.5,"ts":0.5176,"pr":0.5833,"se":0.0288,"w":0.4804,"g":0.6441,"a":0},"1631157":{"n":"Ryan Rollins","t":"MIL","gp":74,"min":2375,"pts":1281,"fga":1030,"fta":159,"ftp":0.7865,"tsa":1099.9,"ts":0.5823,"pr":0.5833,"se":0.0134,"w":0.8871,"g":0.591,"a":2},"1642907":{"n":"Cedric Coward","t":"MEM","gp":62,"min":1598,"pts":843,"fga":648,"fta":172,"ftp":0.8125,"tsa":723.8,"ts":0.5823,"pr":0.5832,"se":0.0161,"w":0.8379,"g":0.5876,"a":3},"1630202":{"n":"Payton Pritchard","t":"BOS","gp":79,"min":2556,"pts":1345,"fga":1091,"fta":146,"ftp":0.8306,"tsa":1155.1,"ts":0.5822,"pr":0.5832,"se":0.0132,"w":0.8919,"g":0.591,"a":2},"1642271":{"n":"Kyle Filipowski","t":"UTA","gp":77,"min":1801,"pts":879,"fga":657,"fta":223,"ftp":0.7146,"tsa":754.9,"ts":0.5822,"pr":0.583,"se":0.0158,"w":0.8436,"g":0.5876,"a":3},"1630623":{"n":"Tyson Etienne","t":"BKN","gp":24,"min":380,"pts":189,"fga":145,"fta":37,"ftp":0.8125,"tsa":161.2,"ts":0.5861,"pr":0.583,"se":0.0273,"w":0.5353,"g":0.5795,"a":4},"1626164":{"n":"Devin Booker","t":"PHX","gp":64,"min":2146,"pts":1668,"fga":1198,"fta":535,"ftp":0.8491,"tsa":1433.3,"ts":0.5819,"pr":0.5827,"se":0.0119,"w":0.911,"g":0.591,"a":2},"1628398":{"n":"Kyle Kuzma","t":"MIL","gp":69,"min":1806,"pts":896,"fga":689,"fta":185,"ftp":0.7304,"tsa":770.3,"ts":0.5816,"pr":0.5825,"se":0.0157,"w":0.8462,"g":0.5876,"a":3},"1643018":{"n":"LJ Cryer","t":"GSW","gp":18,"min":292,"pts":148,"fga":117,"fta":21,"ftp":0.7907,"tsa":126.5,"ts":0.5852,"pr":0.5822,"se":0.029,"w":0.4746,"g":0.5795,"a":4},"203952":{"n":"Andrew Wiggins","t":"MIA","gp":68,"min":2063,"pts":1045,"fga":821,"fta":165,"ftp":0.768,"tsa":893.8,"ts":0.5846,"pr":0.582,"se":0.0147,"w":0.8646,"g":0.5653,"a":5},"1642862":{"n":"Liam McNeeley","t":"CHA","gp":31,"min":368,"pts":132,"fga":95,"fta":41,"ftp":0.7891,"tsa":112.8,"ts":0.5849,"pr":0.5819,"se":0.0298,"w":0.4463,"g":0.5795,"a":4},"1631103":{"n":"Malaki Branham","t":"WAS","gp":28,"min":275,"pts":128,"fga":91,"fta":34,"ftp":0.8125,"tsa":106.2,"ts":0.6028,"pr":0.5815,"se":0.0302,"w":0.4313,"g":0.5653,"a":5},"203991":{"n":"Clint Capela","t":"HOU","gp":75,"min":926,"pts":282,"fga":227,"fta":70,"ftp":0.6464,"tsa":257.6,"ts":0.5473,"pr":0.5814,"se":0.0237,"w":0.6479,"g":0.6441,"a":0},"1629680":{"n":"Matisse Thybulle","t":"POR","gp":30,"min":480,"pts":174,"fga":134,"fta":27,"ftp":0.7787,"tsa":145.9,"ts":0.5964,"pr":0.5812,"se":0.028,"w":0.5103,"g":0.5653,"a":5},"1629636":{"n":"Darius Garland","t":"LAC","gp":45,"min":1344,"pts":845,"fga":672,"fta":132,"ftp":0.7944,"tsa":730.2,"ts":0.5786,"pr":0.5806,"se":0.016,"w":0.8391,"g":0.591,"a":2},"1641764":{"n":"Brandin Podziemski","t":"GSW","gp":82,"min":2333,"pts":1133,"fga":866,"fta":241,"ftp":0.7979,"tsa":971.9,"ts":0.5829,"pr":0.5804,"se":0.0142,"w":0.8741,"g":0.5631,"a":6},"203482":{"n":"Kelly Olynyk","t":"SAS","gp":42,"min":360,"pts":133,"fga":96,"fta":34,"ftp":0.7945,"tsa":111.0,"ts":0.5994,"pr":0.5803,"se":0.0299,"w":0.4421,"g":0.5653,"a":5},"1630532":{"n":"Franz Wagner","t":"ORL","gp":34,"min":1019,"pts":699,"fga":507,"fta":207,"ftp":0.7868,"tsa":598.1,"ts":0.5843,"pr":0.5803,"se":0.0174,"w":0.8103,"g":0.5631,"a":6},"1630558":{"n":"Davion Mitchell","t":"MIA","gp":70,"min":2000,"pts":654,"fga":533,"fta":60,"ftp":0.7,"tsa":559.4,"ts":0.5846,"pr":0.5803,"se":0.0179,"w":0.7998,"g":0.5631,"a":6},"1641739":{"n":"Toumani Camara","t":"POR","gp":82,"min":2731,"pts":1100,"fga":891,"fta":129,"ftp":0.7517,"tsa":947.8,"ts":0.5803,"pr":0.5802,"se":0.0143,"w":0.8713,"g":0.5795,"a":4},"1642349":{"n":"Ajay Mitchell","t":"OKC","gp":57,"min":1473,"pts":774,"fga":590,"fta":167,"ftp":0.8464,"tsa":663.3,"ts":0.5834,"pr":0.5799,"se":0.0167,"w":0.8257,"g":0.5631,"a":6},"1627749":{"n":"Dejounte Murray","t":"NOP","gp":14,"min":389,"pts":234,"fga":182,"fta":52,"ftp":0.7541,"tsa":204.8,"ts":0.5714,"pr":0.5794,"se":0.0255,"w":0.5939,"g":0.591,"a":2},"1626162":{"n":"Kelly Oubre Jr.","t":"PHI","gp":50,"min":1574,"pts":705,"fga":544,"fta":139,"ftp":0.7994,"tsa":605.1,"ts":0.5826,"pr":0.5793,"se":0.0173,"w":0.8121,"g":0.5653,"a":5},"1630552":{"n":"Jalen Johnson","t":"ATL","gp":72,"min":2532,"pts":1621,"fga":1228,"fta":382,"ftp":0.7883,"tsa":1396.0,"ts":0.5806,"pr":0.579,"se":0.0121,"w":0.9089,"g":0.5631,"a":6},"1627739":{"n":"Kris Dunn","t":"LAC","gp":82,"min":2230,"pts":596,"fga":477,"fta":78,"ftp":0.7926,"tsa":511.4,"ts":0.5827,"pr":0.5789,"se":0.0185,"w":0.7851,"g":0.5653,"a":5},"1630583":{"n":"Santi Aldama","t":"MEM","gp":43,"min":1198,"pts":602,"fga":476,"fta":105,"ftp":0.7261,"tsa":522.1,"ts":0.5766,"pr":0.5789,"se":0.0184,"w":0.7885,"g":0.5876,"a":3},"1641869":{"n":"Malachi Smith","t":"BKN","gp":15,"min":359,"pts":124,"fga":99,"fta":10,"ftp":0.8044,"tsa":103.4,"ts":0.5998,"pr":0.5787,"se":0.0303,"w":0.4248,"g":0.5631,"a":6},"1628368":{"n":"De'Aaron Fox","t":"SAS","gp":72,"min":2231,"pts":1336,"fga":1047,"fta":253,"ftp":0.7404,"tsa":1158.1,"ts":0.5768,"pr":0.5783,"se":0.0131,"w":0.8922,"g":0.591,"a":2},"1629731":{"n":"Dean Wade","t":"CLE","gp":59,"min":1318,"pts":342,"fga":278,"fta":33,"ftp":0.8101,"tsa":292.7,"ts":0.5843,"pr":0.5781,"se":0.0228,"w":0.6764,"g":0.5653,"a":5},"1630193":{"n":"Immanuel Quickley","t":"TOR","gp":70,"min":2231,"pts":1150,"fga":905,"fta":196,"ftp":0.8679,"tsa":991.2,"ts":0.5801,"pr":0.578,"se":0.0141,"w":0.8762,"g":0.5631,"a":6},"202696":{"n":"Nikola Vu\u010devi\u0107","t":"BOS","gp":64,"min":1818,"pts":965,"fga":799,"fta":96,"ftp":0.8017,"tsa":841.3,"ts":0.5735,"pr":0.578,"se":0.0151,"w":0.8573,"g":0.6046,"a":1},"1642380":{"n":"Adama Bal","t":"MEM","gp":8,"min":241,"pts":83,"fga":68,"fta":11,"ftp":0.8044,"tsa":72.9,"ts":0.5691,"pr":0.5779,"se":0.0324,"w":0.3425,"g":0.5826},"1630540":{"n":"Miles McBride","t":"NYK","gp":41,"min":1080,"pts":491,"fga":404,"fta":48,"ftp":0.7657,"tsa":425.3,"ts":0.5773,"pr":0.5778,"se":0.0199,"w":0.7523,"g":0.5795,"a":4},"1628991":{"n":"Jaren Jackson Jr.","t":"UTA","gp":48,"min":1455,"pts":931,"fga":719,"fta":203,"ftp":0.8034,"tsa":808.3,"ts":0.5759,"pr":0.5776,"se":0.0154,"w":0.8524,"g":0.5876,"a":3},"1630699":{"n":"MarJon Beauchamp","t":"PHI","gp":14,"min":196,"pts":95,"fga":76,"fta":17,"ftp":0.7624,"tsa":83.5,"ts":0.5688,"pr":0.5774,"se":0.0317,"w":0.3736,"g":0.5826},"1630173":{"n":"Precious Achiuwa","t":"SAC","gp":73,"min":1745,"pts":736,"fga":598,"fta":126,"ftp":0.6105,"tsa":653.5,"ts":0.5631,"pr":0.5774,"se":0.0168,"w":0.8236,"g":0.6441,"a":0},"1631165":{"n":"Keon Ellis","t":"CLE","gp":72,"min":1479,"pts":480,"fga":384,"fta":66,"ftp":0.774,"tsa":413.0,"ts":0.5811,"pr":0.5771,"se":0.0201,"w":0.7468,"g":0.5653,"a":5},"1629014":{"n":"Anfernee Simons","t":"CHI","gp":55,"min":1372,"pts":785,"fga":648,"fta":81,"ftp":0.85,"tsa":683.7,"ts":0.5741,"pr":0.577,"se":0.0165,"w":0.83,"g":0.591,"a":2},"1628988":{"n":"Aaron Holiday","t":"HOU","gp":57,"min":781,"pts":312,"fga":252,"fta":44,"ftp":0.8033,"tsa":271.2,"ts":0.5753,"pr":0.5767,"se":0.0233,"w":0.6595,"g":0.5795,"a":4},"1630180":{"n":"Saddiq Bey","t":"NOP","gp":72,"min":2246,"pts":1271,"fga":967,"fta":313,"ftp":0.7912,"tsa":1104.9,"ts":0.5752,"pr":0.5766,"se":0.0134,"w":0.8875,"g":0.5876,"a":3},"203914":{"n":"Gary Harris","t":"MIL","gp":48,"min":661,"pts":128,"fga":104,"fta":10,"ftp":0.7907,"tsa":108.5,"ts":0.5901,"pr":0.5761,"se":0.03,"w":0.4365,"g":0.5653,"a":5},"1631132":{"n":"Christian Koloko","t":"ATL","gp":27,"min":357,"pts":73,"fga":74,"fta":13,"ftp":0.7414,"tsa":79.9,"ts":0.4566,"pr":0.576,"se":0.0319,"w":0.3634,"g":0.6441,"a":0},"1630567":{"n":"Scottie Barnes","t":"TOR","gp":80,"min":2681,"pts":1448,"fga":1123,"fta":298,"ftp":0.8113,"tsa":1254.2,"ts":0.5772,"pr":0.5758,"se":0.0127,"w":0.8996,"g":0.5631,"a":6},"1631323":{"n":"Simone Fontecchio","t":"MIA","gp":70,"min":1173,"pts":597,"fga":471,"fta":110,"ftp":0.7829,"tsa":519.3,"ts":0.5748,"pr":0.5758,"se":0.0184,"w":0.7877,"g":0.5795,"a":4},"1630533":{"n":"Ziaire Williams","t":"BKN","gp":56,"min":1281,"pts":573,"fga":433,"fta":141,"ftp":0.8427,"tsa":495.1,"ts":0.5786,"pr":0.5757,"se":0.0188,"w":0.7796,"g":0.5653,"a":5},"203926":{"n":"Doug McDermott","t":"SAC","gp":29,"min":439,"pts":164,"fga":139,"fta":10,"ftp":0.775,"tsa":143.5,"ts":0.5713,"pr":0.5753,"se":0.0281,"w":0.5062,"g":0.5795,"a":4},"1631221":{"n":"Collin Gillespie","t":"PHX","gp":80,"min":2282,"pts":1012,"fga":842,"fta":94,"ftp":0.8059,"tsa":883.5,"ts":0.5727,"pr":0.5752,"se":0.0148,"w":0.8632,"g":0.591,"a":2},"1630578":{"n":"Alperen Sengun","t":"HOU","gp":72,"min":2398,"pts":1466,"fga":1123,"fta":361,"ftp":0.7212,"tsa":1281.6,"ts":0.5719,"pr":0.5752,"se":0.0126,"w":0.9015,"g":0.6046,"a":1},"1642352":{"n":"Keshad Johnson","t":"MIA","gp":32,"min":280,"pts":136,"fga":104,"fta":27,"ftp":0.7787,"tsa":115.9,"ts":0.5869,"pr":0.5751,"se":0.0296,"w":0.4528,"g":0.5653,"a":5},"1631342":{"n":"Daeqwon Plowden","t":"SAC","gp":32,"min":844,"pts":344,"fga":279,"fta":49,"ftp":0.8618,"tsa":300.4,"ts":0.5725,"pr":0.5747,"se":0.0225,"w":0.6821,"g":0.5795,"a":4},"1627759":{"n":"Jaylen Brown","t":"BOS","gp":71,"min":2443,"pts":2038,"fga":1543,"fta":533,"ftp":0.799,"tsa":1777.6,"ts":0.5732,"pr":0.5745,"se":0.0108,"w":0.927,"g":0.591,"a":2},"1641783":{"n":"Tristan da Silva","t":"ORL","gp":77,"min":1899,"pts":762,"fga":620,"fta":103,"ftp":0.8125,"tsa":665.5,"ts":0.5725,"pr":0.5737,"se":0.0167,"w":0.8262,"g":0.5795,"a":4},"1642261":{"n":"Dalton Knecht","t":"LAL","gp":54,"min":553,"pts":228,"fga":191,"fta":21,"ftp":0.7673,"tsa":200.2,"ts":0.5695,"pr":0.5736,"se":0.0257,"w":0.5884,"g":0.5795,"a":4},"202699":{"n":"Tobias Harris","t":"DET","gp":63,"min":1746,"pts":836,"fga":659,"fta":166,"ftp":0.8176,"tsa":732.2,"ts":0.5709,"pr":0.5736,"se":0.016,"w":0.8395,"g":0.5876,"a":3},"1631095":{"n":"Jabari Smith Jr.","t":"HOU","gp":77,"min":2705,"pts":1215,"fga":975,"fta":200,"ftp":0.8114,"tsa":1062.8,"ts":0.5716,"pr":0.5734,"se":0.0136,"w":0.8836,"g":0.5876,"a":3},"1642844":{"n":"Dylan Harper","t":"SAS","gp":69,"min":1558,"pts":813,"fga":656,"fta":115,"ftp":0.7857,"tsa":706.4,"ts":0.5755,"pr":0.5734,"se":0.0163,"w":0.8346,"g":0.5631,"a":6},"1631097":{"n":"Bennedict Mathurin","t":"LAC","gp":54,"min":1620,"pts":949,"fga":677,"fta":337,"ftp":0.8675,"tsa":825.1,"ts":0.5751,"pr":0.5733,"se":0.0152,"w":0.8549,"g":0.5631,"a":6},"1631093":{"n":"Jaden Ivey","t":"CHI","gp":37,"min":670,"pts":316,"fga":256,"fta":48,"ftp":0.7912,"tsa":277.1,"ts":0.5701,"pr":0.5733,"se":0.0232,"w":0.6644,"g":0.5795,"a":4},"1630170":{"n":"Devin Vassell","t":"SAS","gp":67,"min":2044,"pts":932,"fga":755,"fta":136,"ftp":0.7805,"tsa":814.8,"ts":0.572,"pr":0.5731,"se":0.0153,"w":0.8534,"g":0.5795,"a":4},"1641706":{"n":"Brandon Miller","t":"CHA","gp":65,"min":1968,"pts":1311,"fga":1044,"fta":231,"ftp":0.8622,"tsa":1145.5,"ts":0.5722,"pr":0.573,"se":0.0132,"w":0.8911,"g":0.5795,"a":4},"201567":{"n":"Kevin Love","t":"UTA","gp":37,"min":613,"pts":248,"fga":199,"fta":48,"ftp":0.7643,"tsa":220.3,"ts":0.5629,"pr":0.5725,"se":0.0249,"w":0.6114,"g":0.5876,"a":3},"1642264":{"n":"Stephon Castle","t":"SAS","gp":68,"min":2038,"pts":1133,"fga":817,"fta":389,"ftp":0.7258,"tsa":988.0,"ts":0.5734,"pr":0.5721,"se":0.0141,"w":0.8759,"g":0.5631,"a":6},"1630171":{"n":"Isaac Okoro","t":"CHI","gp":63,"min":1695,"pts":584,"fga":459,"fta":114,"ftp":0.7794,"tsa":509.2,"ts":0.5734,"pr":0.5716,"se":0.0186,"w":0.7844,"g":0.5653,"a":5},"1629026":{"n":"Kenrich Williams","t":"OKC","gp":56,"min":855,"pts":363,"fga":296,"fta":47,"ftp":0.7074,"tsa":316.5,"ts":0.5734,"pr":0.5709,"se":0.0221,"w":0.6933,"g":0.5653,"a":5},"1627742":{"n":"Brandon Ingram","t":"TOR","gp":77,"min":2604,"pts":1655,"fga":1288,"fta":365,"ftp":0.7997,"tsa":1448.7,"ts":0.5712,"pr":0.5705,"se":0.0119,"w":0.9119,"g":0.5631,"a":6},"1642268":{"n":"Isaiah Collier","t":"UTA","gp":59,"min":1517,"pts":688,"fga":515,"fta":196,"ftp":0.7686,"tsa":601.4,"ts":0.572,"pr":0.5703,"se":0.0174,"w":0.8112,"g":0.5631,"a":6},"1627741":{"n":"Buddy Hield","t":"ATL","gp":51,"min":819,"pts":390,"fga":327,"fta":39,"ftp":0.7657,"tsa":344.2,"ts":0.5665,"pr":0.5702,"se":0.0215,"w":0.7109,"g":0.5795,"a":4},"202331":{"n":"Paul George","t":"PHI","gp":37,"min":1135,"pts":641,"fga":513,"fta":108,"ftp":0.8398,"tsa":560.7,"ts":0.5716,"pr":0.5699,"se":0.0179,"w":0.8002,"g":0.5631,"a":6},"1628370":{"n":"Malik Monk","t":"SAC","gp":62,"min":1364,"pts":772,"fga":632,"fta":115,"ftp":0.8185,"tsa":682.5,"ts":0.5655,"pr":0.5699,"se":0.0165,"w":0.8298,"g":0.591,"a":2},"1628970":{"n":"Miles Bridges","t":"CHA","gp":77,"min":2387,"pts":1314,"fga":1042,"fta":264,"ftp":0.7888,"tsa":1158.0,"ts":0.5673,"pr":0.5695,"se":0.0131,"w":0.8921,"g":0.5876,"a":3},"1630314":{"n":"Brandon Williams","t":"DAL","gp":66,"min":1463,"pts":859,"fga":617,"fta":311,"ftp":0.7757,"tsa":753.7,"ts":0.5698,"pr":0.5688,"se":0.0158,"w":0.8433,"g":0.5631,"a":6},"1642348":{"n":"Justin Edwards","t":"PHI","gp":64,"min":977,"pts":386,"fga":320,"fta":42,"ftp":0.7857,"tsa":338.5,"ts":0.5702,"pr":0.5688,"se":0.0216,"w":0.7074,"g":0.5653,"a":5},"1630702":{"n":"Jaden Hardy","t":"WAS","gp":57,"min":898,"pts":523,"fga":429,"fta":76,"ftp":0.7233,"tsa":462.5,"ts":0.5655,"pr":0.5687,"se":0.0193,"w":0.7676,"g":0.5795,"a":4},"1631133":{"n":"Jabari Walker","t":"PHI","gp":64,"min":762,"pts":276,"fga":213,"fta":66,"ftp":0.7585,"tsa":242.0,"ts":0.5702,"pr":0.5684,"se":0.0242,"w":0.6335,"g":0.5653,"a":5},"1630570":{"n":"Trendon Watford","t":"PHI","gp":53,"min":864,"pts":346,"fga":268,"fta":80,"ftp":0.7526,"tsa":303.1,"ts":0.5708,"pr":0.5684,"se":0.0225,"w":0.684,"g":0.5631,"a":6},"203468":{"n":"CJ McCollum","t":"ATL","gp":76,"min":2263,"pts":1424,"fga":1154,"fta":237,"ftp":0.772,"tsa":1258.3,"ts":0.5658,"pr":0.5684,"se":0.0127,"w":0.8999,"g":0.591,"a":2},"1628960":{"n":"Grayson Allen","t":"PHX","gp":51,"min":1467,"pts":841,"fga":667,"fta":178,"ftp":0.8078,"tsa":745.4,"ts":0.5641,"pr":0.5684,"se":0.0159,"w":0.8419,"g":0.591,"a":2},"1642859":{"n":"Jase Richardson","t":"ORL","gp":54,"min":587,"pts":239,"fga":188,"fta":48,"ftp":0.6866,"tsa":209.1,"ts":0.5714,"pr":0.5681,"se":0.0253,"w":0.599,"g":0.5631,"a":6},"1630256":{"n":"Jae'Sean Tate","t":"HOU","gp":46,"min":405,"pts":129,"fga":109,"fta":9,"ftp":0.7907,"tsa":112.9,"ts":0.5713,"pr":0.568,"se":0.0298,"w":0.4464,"g":0.5653,"a":5},"203937":{"n":"Kyle Anderson","t":"MIN","gp":43,"min":853,"pts":266,"fga":202,"fta":71,"ftp":0.6797,"tsa":233.1,"ts":0.5706,"pr":0.5678,"se":0.0245,"w":0.6247,"g":0.5631,"a":6},"1629723":{"n":"John Konchar","t":"UTA","gp":56,"min":1115,"pts":248,"fga":199,"fta":43,"ftp":0.7435,"tsa":217.9,"ts":0.569,"pr":0.5675,"se":0.025,"w":0.6089,"g":0.5653,"a":5},"1629675":{"n":"Naz Reid","t":"MIN","gp":77,"min":2007,"pts":1046,"fga":871,"fta":126,"ftp":0.7121,"tsa":926.6,"ts":0.5644,"pr":0.5675,"se":0.0145,"w":0.8687,"g":0.5876,"a":3},"1629614":{"n":"Andrew Nembhard","t":"IND","gp":57,"min":1786,"pts":966,"fga":753,"fta":237,"ftp":0.8159,"tsa":857.1,"ts":0.5635,"pr":0.5674,"se":0.015,"w":0.8596,"g":0.591,"a":2},"203076":{"n":"Anthony Davis","t":"WAS","gp":20,"min":626,"pts":407,"fga":334,"fta":78,"ftp":0.7581,"tsa":368.2,"ts":0.5526,"pr":0.5669,"se":0.021,"w":0.7245,"g":0.6046,"a":1},"1630595":{"n":"Cade Cunningham","t":"DET","gp":64,"min":2172,"pts":1531,"fga":1189,"fta":381,"ftp":0.8143,"tsa":1356.5,"ts":0.5643,"pr":0.5668,"se":0.0122,"w":0.9064,"g":0.591,"a":2},"1631199":{"n":"Ron Harper Jr.","t":"BOS","gp":29,"min":318,"pts":123,"fga":110,"fta":4,"ftp":0.7907,"tsa":111.7,"ts":0.5507,"pr":0.5668,"se":0.0298,"w":0.4437,"g":0.5795,"a":4},"203083":{"n":"Andre Drummond","t":"PHI","gp":63,"min":1231,"pts":403,"fga":337,"fta":86,"ftp":0.6187,"tsa":374.7,"ts":0.5378,"pr":0.5667,"se":0.0209,"w":0.728,"g":0.6441,"a":0},"1642878":{"n":"Tyrese Proctor","t":"CLE","gp":50,"min":545,"pts":272,"fga":225,"fta":48,"ftp":0.8356,"tsa":246.1,"ts":0.5527,"pr":0.5666,"se":0.0241,"w":0.6374,"g":0.591,"a":2},"1642864":{"n":"Hugo Gonz\u00e1lez","t":"BOS","gp":74,"min":1084,"pts":289,"fga":246,"fta":20,"ftp":0.6558,"tsa":254.7,"ts":0.5673,"pr":0.5666,"se":0.0238,"w":0.6453,"g":0.5653,"a":5},"1631094":{"n":"Paolo Banchero","t":"ORL","gp":72,"min":2502,"pts":1599,"fga":1152,"fta":587,"ftp":0.7782,"tsa":1410.4,"ts":0.5669,"pr":0.5665,"se":0.012,"w":0.9097,"g":0.5631,"a":6},"203994":{"n":"Jusuf Nurki\u0107","t":"UTA","gp":41,"min":1083,"pts":447,"fga":358,"fta":105,"ftp":0.5931,"tsa":404.0,"ts":0.5532,"pr":0.5665,"se":0.0203,"w":0.7426,"g":0.6046,"a":1},"1641767":{"n":"Ben Sheppard","t":"IND","gp":65,"min":1390,"pts":459,"fga":387,"fta":49,"ftp":0.7988,"tsa":408.5,"ts":0.5618,"pr":0.5664,"se":0.0202,"w":0.7448,"g":0.5795,"a":4},"1627783":{"n":"Pascal Siakam","t":"IND","gp":62,"min":2057,"pts":1485,"fga":1155,"fta":353,"ftp":0.7414,"tsa":1310.5,"ts":0.5666,"pr":0.5662,"se":0.0124,"w":0.9035,"g":0.5631,"a":6},"1630228":{"n":"Jonathan Kuminga","t":"ATL","gp":36,"min":831,"pts":438,"fga":339,"fta":121,"ftp":0.737,"tsa":392.1,"ts":0.5585,"pr":0.5661,"se":0.0205,"w":0.7369,"g":0.5876,"a":3},"204456":{"n":"T.J. McConnell","t":"IND","gp":56,"min":963,"pts":525,"fga":450,"fta":30,"ftp":0.8224,"tsa":463.4,"ts":0.5665,"pr":0.5657,"se":0.0193,"w":0.768,"g":0.5631,"a":6},"1641733":{"n":"Nick Smith Jr.","t":"LAL","gp":30,"min":375,"pts":185,"fga":161,"fta":14,"ftp":0.8044,"tsa":167.0,"ts":0.5538,"pr":0.5656,"se":0.027,"w":0.544,"g":0.5795,"a":4},"1629611":{"n":"Terance Mann","t":"BKN","gp":63,"min":1529,"pts":455,"fga":368,"fta":77,"ftp":0.8228,"tsa":401.7,"ts":0.5664,"pr":0.5655,"se":0.0203,"w":0.7415,"g":0.5631,"a":6},"1642366":{"n":"Quinten Post","t":"GSW","gp":67,"min":1159,"pts":513,"fga":439,"fta":46,"ftp":0.7439,"tsa":459.1,"ts":0.5587,"pr":0.5654,"se":0.0193,"w":0.7663,"g":0.5876,"a":3},"1642856":{"n":"Egor D\u00ebmin","t":"BKN","gp":52,"min":1308,"pts":536,"fga":449,"fta":66,"ftp":0.819,"tsa":478.0,"ts":0.5607,"pr":0.5649,"se":0.019,"w":0.7735,"g":0.5795,"a":4},"1630581":{"n":"Josh Giddey","t":"CHI","gp":54,"min":1731,"pts":919,"fga":717,"fta":219,"ftp":0.7957,"tsa":813.2,"ts":0.565,"pr":0.5648,"se":0.0153,"w":0.8531,"g":0.5631,"a":6},"1641724":{"n":"Jett Howard","t":"ORL","gp":55,"min":695,"pts":301,"fga":251,"fta":44,"ftp":0.85,"tsa":270.2,"ts":0.5571,"pr":0.5648,"se":0.0234,"w":0.6587,"g":0.5795,"a":4},"1642263":{"n":"Reed Sheppard","t":"HOU","gp":82,"min":2147,"pts":1110,"fga":946,"fta":83,"ftp":0.8356,"tsa":982.3,"ts":0.565,"pr":0.5648,"se":0.0141,"w":0.8753,"g":0.5631,"a":6},"1641707":{"n":"Taylor Hendricks","t":"MEM","gp":59,"min":1118,"pts":438,"fga":355,"fta":75,"ftp":0.6539,"tsa":388.0,"ts":0.5645,"pr":0.5647,"se":0.0206,"w":0.7348,"g":0.5653,"a":5},"1628971":{"n":"Bruce Brown","t":"DEN","gp":82,"min":1998,"pts":649,"fga":522,"fta":120,"ftp":0.797,"tsa":575.0,"ts":0.5643,"pr":0.5645,"se":0.0177,"w":0.8042,"g":0.5653,"a":5},"1631110":{"n":"Jeremy Sochan","t":"NYK","gp":44,"min":469,"pts":158,"fga":129,"fta":26,"ftp":0.7429,"tsa":140.3,"ts":0.5633,"pr":0.5643,"se":0.0283,"w":0.5005,"g":0.5653,"a":5},"1629645":{"n":"Kevin Porter Jr.","t":"MIL","gp":38,"min":1261,"pts":661,"fga":514,"fta":163,"ftp":0.843,"tsa":585.5,"ts":0.5645,"pr":0.5642,"se":0.0176,"w":0.807,"g":0.5631,"a":6},"201143":{"n":"Al Horford","t":"GSW","gp":45,"min":969,"pts":372,"fga":324,"fta":27,"ftp":0.8286,"tsa":335.7,"ts":0.5541,"pr":0.564,"se":0.0217,"w":0.7057,"g":0.5876,"a":3},"1630192":{"n":"Zeke Nnaji","t":"DEN","gp":52,"min":626,"pts":190,"fga":151,"fta":41,"ftp":0.8352,"tsa":168.9,"ts":0.5624,"pr":0.5637,"se":0.0269,"w":0.5468,"g":0.5653,"a":5},"1641771":{"n":"Jalen Slawson","t":"IND","gp":13,"min":311,"pts":95,"fga":77,"fta":17,"ftp":0.6897,"tsa":84.7,"ts":0.5611,"pr":0.5637,"se":0.0316,"w":0.3768,"g":0.5653,"a":5},"1642277":{"n":"Johnny Furphy","t":"IND","gp":35,"min":643,"pts":180,"fga":149,"fta":25,"ftp":0.672,"tsa":160.1,"ts":0.562,"pr":0.5635,"se":0.0273,"w":0.5335,"g":0.5653,"a":5},"1642959":{"n":"Chris Youngblood","t":"POR","gp":34,"min":185,"pts":71,"fga":63,"fta":11,"ftp":0.8044,"tsa":67.9,"ts":0.5226,"pr":0.563,"se":0.0328,"w":0.3267,"g":0.5826},"1642377":{"n":"Jaylen Wells","t":"MEM","gp":69,"min":1821,"pts":865,"fga":698,"fta":170,"ftp":0.7872,"tsa":772.9,"ts":0.5596,"pr":0.5626,"se":0.0157,"w":0.8466,"g":0.5795,"a":4},"1642885":{"n":"Mohamed Diawara","t":"NYK","gp":69,"min":634,"pts":246,"fga":213,"fta":23,"ftp":0.7787,"tsa":223.2,"ts":0.5511,"pr":0.5621,"se":0.0248,"w":0.6145,"g":0.5795,"a":4},"1630590":{"n":"Scotty Pippen Jr.","t":"MEM","gp":10,"min":212,"pts":114,"fga":96,"fta":24,"ftp":0.7538,"tsa":106.5,"ts":0.5352,"pr":0.5621,"se":0.0301,"w":0.4321,"g":0.5826},"1643016":{"n":"Bez Mbeng","t":"UTA","gp":15,"min":492,"pts":122,"fga":100,"fta":22,"ftp":0.7404,"tsa":109.5,"ts":0.557,"pr":0.5616,"se":0.03,"w":0.4389,"g":0.5653,"a":5},"1642267":{"n":"Bub Carrington","t":"WAS","gp":82,"min":2271,"pts":878,"fga":741,"fta":111,"ftp":0.7273,"tsa":790.0,"ts":0.5557,"pr":0.561,"se":0.0155,"w":0.8495,"g":0.591,"a":2},"1642258":{"n":"Zaccharie Risacher","t":"ATL","gp":67,"min":1503,"pts":641,"fga":536,"fta":85,"ftp":0.685,"tsa":573.3,"ts":0.5591,"pr":0.5603,"se":0.0177,"w":0.8037,"g":0.5653,"a":5},"1642364":{"n":"Jamir Watkins","t":"WAS","gp":50,"min":1032,"pts":368,"fga":296,"fta":77,"ftp":0.745,"tsa":329.7,"ts":0.5581,"pr":0.5603,"se":0.0218,"w":0.7019,"g":0.5653,"a":5},"1630591":{"n":"Jalen Suggs","t":"ORL","gp":57,"min":1574,"pts":786,"fga":649,"fta":122,"ftp":0.82,"tsa":702.7,"ts":0.5593,"pr":0.5599,"se":0.0163,"w":0.8339,"g":0.5631,"a":6},"1642273":{"n":"Kyshawn George","t":"WAS","gp":48,"min":1391,"pts":710,"fga":577,"fta":132,"ftp":0.797,"tsa":635.0,"ts":0.5591,"pr":0.5598,"se":0.017,"w":0.8193,"g":0.5631,"a":6},"1630174":{"n":"Aaron Nesmith","t":"IND","gp":45,"min":1335,"pts":621,"fga":512,"fta":109,"ftp":0.8465,"tsa":559.8,"ts":0.5546,"pr":0.5596,"se":0.0179,"w":0.7999,"g":0.5795,"a":4},"1642260":{"n":"Nikola Topi\u0107","t":"OKC","gp":10,"min":160,"pts":52,"fga":51,"fta":3,"ftp":0.721,"tsa":52.2,"ts":0.4979,"pr":0.5596,"se":0.0341,"w":0.2717,"g":0.5826},"1642530":{"n":"Yuki Kawamura","t":"CHI","gp":18,"min":209,"pts":62,"fga":52,"fta":21,"ftp":0.8163,"tsa":61.2,"ts":0.5068,"pr":0.5595,"se":0.0334,"w":0.304,"g":0.5826},"1631114":{"n":"Jalen Williams","t":"OKC","gp":33,"min":936,"pts":563,"fga":446,"fta":133,"ftp":0.8118,"tsa":504.5,"ts":0.5579,"pr":0.5591,"se":0.0186,"w":0.7828,"g":0.5631,"a":6},"1629021":{"n":"Moritz Wagner","t":"ORL","gp":36,"min":427,"pts":247,"fga":195,"fta":75,"ftp":0.7839,"tsa":228.1,"ts":0.5414,"pr":0.559,"se":0.0247,"w":0.6197,"g":0.5876,"a":3},"201572":{"n":"Brook Lopez","t":"LAC","gp":75,"min":1635,"pts":634,"fga":542,"fta":74,"ftp":0.752,"tsa":574.8,"ts":0.5515,"pr":0.5586,"se":0.0177,"w":0.8041,"g":0.5876,"a":3},"1641730":{"n":"Noah Clowney","t":"BKN","gp":66,"min":1780,"pts":809,"fga":631,"fta":227,"ftp":0.7944,"tsa":730.7,"ts":0.5536,"pr":0.5578,"se":0.016,"w":0.8392,"g":0.5795,"a":4},"1628989":{"n":"Kevin Huerter","t":"DET","gp":69,"min":1549,"pts":693,"fga":596,"fta":70,"ftp":0.7816,"tsa":627.0,"ts":0.5527,"pr":0.5576,"se":0.0171,"w":0.8175,"g":0.5795,"a":4},"1631204":{"n":"Marcus Sasser","t":"DET","gp":38,"min":456,"pts":197,"fga":177,"fta":19,"ftp":0.8044,"tsa":185.2,"ts":0.5318,"pr":0.5573,"se":0.0262,"w":0.5695,"g":0.591,"a":2},"1629020":{"n":"Jarred Vanderbilt","t":"LAL","gp":65,"min":1128,"pts":288,"fga":240,"fta":47,"ftp":0.709,"tsa":260.5,"ts":0.5528,"pr":0.5572,"se":0.0236,"w":0.6504,"g":0.5653,"a":5},"1642272":{"n":"Jared McCain","t":"OKC","gp":67,"min":1160,"pts":558,"fga":480,"fta":62,"ftp":0.82,"tsa":507.4,"ts":0.5499,"pr":0.5563,"se":0.0186,"w":0.7837,"g":0.5795,"a":4},"1628389":{"n":"Bam Adebayo","t":"MIA","gp":73,"min":2365,"pts":1468,"fga":1145,"fta":416,"ftp":0.7916,"tsa":1327.9,"ts":0.5528,"pr":0.5561,"se":0.0124,"w":0.9046,"g":0.5876,"a":3},"1627824":{"n":"Guerschon Yabusele","t":"CHI","gp":67,"min":1007,"pts":373,"fga":312,"fta":72,"ftp":0.7526,"tsa":343.6,"ts":0.5428,"pr":0.5558,"se":0.0215,"w":0.7105,"g":0.5876,"a":3},"1628369":{"n":"Jayson Tatum","t":"BOS","gp":16,"min":522,"pts":348,"fga":287,"fta":80,"ftp":0.8171,"tsa":322.0,"ts":0.5404,"pr":0.5557,"se":0.022,"w":0.697,"g":0.591,"a":2},"1631200":{"n":"Kris Murray","t":"POR","gp":57,"min":1333,"pts":331,"fga":276,"fta":55,"ftp":0.7062,"tsa":300.3,"ts":0.5511,"pr":0.5556,"se":0.0226,"w":0.682,"g":0.5653,"a":5},"1630644":{"n":"Mac McClung","t":"CHI","gp":11,"min":135,"pts":67,"fga":59,"fta":19,"ftp":0.7551,"tsa":67.2,"ts":0.4988,"pr":0.5554,"se":0.0329,"w":0.3242,"g":0.5826},"1641710":{"n":"Anthony Black","t":"ORL","gp":64,"min":1910,"pts":959,"fga":772,"fta":212,"ftp":0.7963,"tsa":865.4,"ts":0.5541,"pr":0.5554,"se":0.0149,"w":0.8607,"g":0.5631,"a":6},"1629162":{"n":"Jordan McLaughlin","t":"SAS","gp":44,"min":282,"pts":89,"fga":79,"fta":8,"ftp":0.775,"tsa":82.4,"ts":0.54,"pr":0.5546,"se":0.0317,"w":0.3705,"g":0.5631,"a":6},"1630703":{"n":"Scoot Henderson","t":"POR","gp":30,"min":748,"pts":427,"fga":342,"fta":103,"ftp":0.8174,"tsa":387.2,"ts":0.5514,"pr":0.5545,"se":0.0206,"w":0.7345,"g":0.5631,"a":6},"1641772":{"n":"Nae'Qwan Tomlin","t":"CLE","gp":64,"min":1004,"pts":374,"fga":314,"fta":59,"ftp":0.7961,"tsa":340.0,"ts":0.55,"pr":0.5545,"se":0.0216,"w":0.7083,"g":0.5653,"a":5},"1641727":{"n":"Dariq Whitehead","t":"MEM","gp":6,"min":183,"pts":98,"fga":93,"fta":6,"ftp":0.775,"tsa":95.8,"ts":0.5113,"pr":0.5536,"se":0.0308,"w":0.4064,"g":0.5826},"1642860":{"n":"Will Riley","t":"WAS","gp":74,"min":1632,"pts":764,"fga":618,"fta":181,"ftp":0.7947,"tsa":697.7,"ts":0.5475,"pr":0.5528,"se":0.0164,"w":0.8329,"g":0.5795,"a":4},"1642259":{"n":"Alex Sarr","t":"WAS","gp":48,"min":1305,"pts":783,"fga":656,"fta":149,"ftp":0.6791,"tsa":721.4,"ts":0.5427,"pr":0.5527,"se":0.0161,"w":0.8375,"g":0.6046,"a":1},"203903":{"n":"Jordan Clarkson","t":"NYK","gp":72,"min":1279,"pts":622,"fga":526,"fta":100,"ftp":0.7823,"tsa":569.9,"ts":0.5457,"pr":0.5524,"se":0.0178,"w":0.8028,"g":0.5795,"a":4},"1630592":{"n":"Jalen Wilson","t":"BKN","gp":54,"min":859,"pts":343,"fga":278,"fta":90,"ftp":0.7645,"tsa":317.7,"ts":0.5398,"pr":0.552,"se":0.0221,"w":0.6941,"g":0.5795,"a":4},"1641709":{"n":"Ausar Thompson","t":"DET","gp":73,"min":1896,"pts":721,"fga":577,"fta":182,"ftp":0.5991,"tsa":657.1,"ts":0.5487,"pr":0.5516,"se":0.0168,"w":0.8244,"g":0.5653,"a":5},"1631243":{"n":"Mouhamed Gueye","t":"ATL","gp":77,"min":1179,"pts":342,"fga":290,"fta":54,"ftp":0.7443,"tsa":313.6,"ts":0.5452,"pr":0.5514,"se":0.0222,"w":0.6914,"g":0.5653,"a":5},"1631101":{"n":"Shaedon Sharpe","t":"POR","gp":50,"min":1471,"pts":1042,"fga":868,"fta":198,"ftp":0.7837,"tsa":955.0,"ts":0.5455,"pr":0.5514,"se":0.0143,"w":0.8721,"g":0.591,"a":2},"1631174":{"n":"Tyler Burton","t":"MEM","gp":12,"min":307,"pts":129,"fga":112,"fta":28,"ftp":0.8125,"tsa":124.5,"ts":0.5183,"pr":0.5507,"se":0.0291,"w":0.4706,"g":0.5795,"a":4},"1641763":{"n":"Julian Phillips","t":"MIN","gp":48,"min":427,"pts":140,"fga":121,"fta":23,"ftp":0.7981,"tsa":130.9,"ts":0.5347,"pr":0.5505,"se":0.0288,"w":0.4832,"g":0.5653,"a":5},"1628975":{"n":"Jevon Carter","t":"ORL","gp":53,"min":867,"pts":339,"fga":307,"fta":19,"ftp":0.7818,"tsa":315.4,"ts":0.5373,"pr":0.5503,"se":0.0222,"w":0.6926,"g":0.5795,"a":4},"1642843":{"n":"Cooper Flagg","t":"DAL","gp":70,"min":2344,"pts":1473,"fga":1194,"fta":337,"ftp":0.8393,"tsa":1342.4,"ts":0.5487,"pr":0.55,"se":0.0123,"w":0.9056,"g":0.5631,"a":6},"1642852":{"n":"Derik Queen","t":"NOP","gp":81,"min":2023,"pts":948,"fga":748,"fta":268,"ftp":0.8112,"tsa":865.7,"ts":0.5475,"pr":0.5497,"se":0.0149,"w":0.8608,"g":0.5631,"a":6},"1628467":{"n":"Maxi Kleber","t":"LAL","gp":43,"min":461,"pts":86,"fga":73,"fta":21,"ftp":0.6648,"tsa":82.3,"ts":0.5227,"pr":0.5495,"se":0.0317,"w":0.3701,"g":0.5653,"a":5},"203992":{"n":"Bogdan Bogdanovi\u0107","t":"LAC","gp":23,"min":452,"pts":171,"fga":152,"fta":26,"ftp":0.7761,"tsa":163.3,"ts":0.5235,"pr":0.5493,"se":0.0272,"w":0.5385,"g":0.5795,"a":4},"1629618":{"n":"Jalen Pickett","t":"DEN","gp":50,"min":807,"pts":260,"fga":232,"fta":19,"ftp":0.7907,"tsa":240.3,"ts":0.5409,"pr":0.5491,"se":0.0243,"w":0.6319,"g":0.5631,"a":6},"1626166":{"n":"Cameron Payne","t":"PHI","gp":22,"min":374,"pts":163,"fga":149,"fta":23,"ftp":0.8125,"tsa":159.3,"ts":0.5116,"pr":0.5488,"se":0.0274,"w":0.5322,"g":0.591,"a":2},"1643007":{"n":"Taelon Peter","t":"IND","gp":38,"min":492,"pts":171,"fga":158,"fta":13,"ftp":0.7559,"tsa":163.8,"ts":0.5219,"pr":0.5485,"se":0.0272,"w":0.5392,"g":0.5795,"a":4},"203935":{"n":"Marcus Smart","t":"LAL","gp":62,"min":1769,"pts":579,"fga":476,"fta":128,"ftp":0.8299,"tsa":532.2,"ts":0.544,"pr":0.5484,"se":0.0183,"w":0.7917,"g":0.5653,"a":5},"1642502":{"n":"Malevy Leons","t":"GSW","gp":25,"min":276,"pts":83,"fga":72,"fta":18,"ftp":0.8269,"tsa":80.0,"ts":0.5189,"pr":0.5484,"se":0.0319,"w":0.3636,"g":0.5653,"a":5},"1630631":{"n":"Jose Alvarado","t":"NYK","gp":69,"min":1370,"pts":510,"fga":449,"fta":45,"ftp":0.7761,"tsa":468.8,"ts":0.5439,"pr":0.5483,"se":0.0192,"w":0.7701,"g":0.5631,"a":6},"1641740":{"n":"Jaylen Clark","t":"MIN","gp":68,"min":888,"pts":275,"fga":228,"fta":62,"ftp":0.7128,"tsa":255.2,"ts":0.5389,"pr":0.5482,"se":0.0238,"w":0.6457,"g":0.5653,"a":5},"1630700":{"n":"Dyson Daniels","t":"ATL","gp":76,"min":2520,"pts":901,"fga":777,"fta":110,"ftp":0.6791,"tsa":825.6,"ts":0.5457,"pr":0.5482,"se":0.0152,"w":0.855,"g":0.5631,"a":6},"1629631":{"n":"De'Andre Hunter","t":"SAC","gp":45,"min":1175,"pts":615,"fga":501,"fta":155,"ftp":0.7992,"tsa":569.3,"ts":0.5402,"pr":0.5479,"se":0.0178,"w":0.8026,"g":0.5795,"a":4},"1631120":{"n":"JD Davison","t":"HOU","gp":28,"min":218,"pts":69,"fga":64,"fta":18,"ftp":0.7296,"tsa":71.8,"ts":0.4802,"pr":0.5479,"se":0.0325,"w":0.3391,"g":0.5826},"1631207":{"n":"Dalen Terry","t":"PHI","gp":48,"min":551,"pts":176,"fga":155,"fta":23,"ftp":0.694,"tsa":165.1,"ts":0.5329,"pr":0.5477,"se":0.0271,"w":0.5412,"g":0.5653,"a":5},"1642346":{"n":"Ryan Dunn","t":"PHX","gp":70,"min":1355,"pts":407,"fga":362,"fta":33,"ftp":0.704,"tsa":376.4,"ts":0.5407,"pr":0.5473,"se":0.0208,"w":0.7289,"g":0.5653,"a":5},"1627936":{"n":"Alex Caruso","t":"OKC","gp":56,"min":1020,"pts":348,"fga":300,"fta":52,"ftp":0.7891,"tsa":322.9,"ts":0.5389,"pr":0.5469,"se":0.022,"w":0.6975,"g":0.5653,"a":5},"1641716":{"n":"Jarace Walker","t":"IND","gp":76,"min":1953,"pts":884,"fga":733,"fta":191,"ftp":0.718,"tsa":817.0,"ts":0.541,"pr":0.5467,"se":0.0153,"w":0.8537,"g":0.5795,"a":4},"1630598":{"n":"Aaron Wiggins","t":"OKC","gp":65,"min":1414,"pts":611,"fga":536,"fta":72,"ftp":0.7312,"tsa":567.9,"ts":0.538,"pr":0.5462,"se":0.0178,"w":0.8022,"g":0.5795,"a":4},"202691":{"n":"Klay Thompson","t":"DAL","gp":69,"min":1497,"pts":810,"fga":728,"fta":51,"ftp":0.7116,"tsa":750.3,"ts":0.5398,"pr":0.5461,"se":0.0159,"w":0.8427,"g":0.5795,"a":4},"201145":{"n":"Jeff Green","t":"HOU","gp":30,"min":175,"pts":67,"fga":68,"fta":6,"ftp":0.775,"tsa":70.8,"ts":0.4729,"pr":0.5457,"se":0.0326,"w":0.336,"g":0.5826},"1641711":{"n":"Gradey Dick","t":"TOR","gp":76,"min":1067,"pts":455,"fga":384,"fta":94,"ftp":0.8151,"tsa":425.6,"ts":0.5346,"pr":0.5457,"se":0.0199,"w":0.7525,"g":0.5795,"a":4},"1642868":{"n":"Carter Bryant","t":"SAS","gp":71,"min":818,"pts":298,"fga":265,"fta":44,"ftp":0.6866,"tsa":284.2,"ts":0.5242,"pr":0.5451,"se":0.023,"w":0.67,"g":0.5876,"a":3},"1642278":{"n":"Tyler Kolek","t":"NYK","gp":62,"min":727,"pts":274,"fga":248,"fta":19,"ftp":0.7551,"tsa":256.2,"ts":0.5348,"pr":0.5448,"se":0.0238,"w":0.6466,"g":0.5631,"a":6},"203110":{"n":"Draymond Green","t":"GSW","gp":68,"min":1869,"pts":570,"fga":491,"fta":84,"ftp":0.7012,"tsa":528.0,"ts":0.5398,"pr":0.5447,"se":0.0183,"w":0.7904,"g":0.5631,"a":6},"1631113":{"n":"Kennedy Chandler","t":"UTA","gp":11,"min":355,"pts":165,"fga":137,"fta":44,"ftp":0.6377,"tsa":156.3,"ts":0.5278,"pr":0.5445,"se":0.0275,"w":0.5275,"g":0.5631,"a":6},"1631104":{"n":"Blake Wesley","t":"POR","gp":31,"min":361,"pts":148,"fga":124,"fta":38,"ftp":0.6804,"tsa":140.8,"ts":0.5255,"pr":0.5443,"se":0.0282,"w":0.5014,"g":0.5631,"a":6},"1629023":{"n":"P.J. Washington","t":"DAL","gp":56,"min":1736,"pts":793,"fga":658,"fta":189,"ftp":0.6631,"tsa":740.9,"ts":0.5351,"pr":0.5435,"se":0.0159,"w":0.8411,"g":0.5876,"a":3},"1628415":{"n":"Dillon Brooks","t":"PHX","gp":56,"min":1702,"pts":1131,"fga":959,"fta":214,"ftp":0.7928,"tsa":1053.3,"ts":0.5369,"pr":0.5432,"se":0.0137,"w":0.8827,"g":0.591,"a":2},"1630560":{"n":"Cam Thomas","t":"MIL","gp":42,"min":881,"pts":567,"fga":461,"fta":167,"ftp":0.8219,"tsa":534.3,"ts":0.5306,"pr":0.5431,"se":0.0182,"w":0.7924,"g":0.591,"a":2},"1628997":{"n":"Caleb Martin","t":"DAL","gp":58,"min":856,"pts":227,"fga":189,"fta":59,"ftp":0.6295,"tsa":214.9,"ts":0.5282,"pr":0.5428,"se":0.0251,"w":0.6055,"g":0.5653,"a":5},"1641715":{"n":"Cam Whitmore","t":"WAS","gp":21,"min":354,"pts":193,"fga":169,"fta":33,"ftp":0.6897,"tsa":183.7,"ts":0.5254,"pr":0.5426,"se":0.0263,"w":0.5675,"g":0.5653,"a":5},"1642845":{"n":"VJ Edgecombe","t":"PHI","gp":75,"min":2623,"pts":1199,"fga":1030,"fta":182,"ftp":0.8125,"tsa":1110.1,"ts":0.54,"pr":0.5426,"se":0.0134,"w":0.888,"g":0.5631,"a":6},"1629018":{"n":"Gary Trent Jr.","t":"MIL","gp":65,"min":1377,"pts":529,"fga":473,"fta":56,"ftp":0.7116,"tsa":497.7,"ts":0.5314,"pr":0.542,"se":0.0187,"w":0.7805,"g":0.5795,"a":4},"1626156":{"n":"D'Angelo Russell","t":"WAS","gp":26,"min":495,"pts":264,"fga":232,"fta":55,"ftp":0.7805,"tsa":256.2,"ts":0.5151,"pr":0.542,"se":0.0238,"w":0.6467,"g":0.591,"a":2},"1641717":{"n":"Cason Wallace","t":"OKC","gp":77,"min":2046,"pts":660,"fga":584,"fta":71,"ftp":0.7722,"tsa":615.3,"ts":0.5363,"pr":0.5417,"se":0.0172,"w":0.8147,"g":0.5653,"a":5},"1629673":{"n":"Jordan Poole","t":"NOP","gp":39,"min":933,"pts":524,"fga":444,"fta":119,"ftp":0.8211,"tsa":496.5,"ts":0.5277,"pr":0.5416,"se":0.0188,"w":0.7801,"g":0.591,"a":2},"1642848":{"n":"Tre Johnson","t":"WAS","gp":60,"min":1443,"pts":733,"fga":647,"fta":90,"ftp":0.8443,"tsa":686.6,"ts":0.5338,"pr":0.5415,"se":0.0165,"w":0.8306,"g":0.5795,"a":4},"1642355":{"n":"Bronny James","t":"LAL","gp":42,"min":375,"pts":122,"fga":115,"fta":8,"ftp":0.7907,"tsa":118.3,"ts":0.5155,"pr":0.5413,"se":0.0294,"w":0.4581,"g":0.5631,"a":6},"1626204":{"n":"Larry Nance Jr.","t":"CLE","gp":35,"min":449,"pts":131,"fga":124,"fta":8,"ftp":0.7392,"tsa":127.6,"ts":0.5134,"pr":0.5405,"se":0.0289,"w":0.4768,"g":0.5653,"a":5},"1642846":{"n":"Ace Bailey","t":"UTA","gp":72,"min":1988,"pts":993,"fga":892,"fta":85,"ftp":0.7744,"tsa":929.5,"ts":0.5342,"pr":0.5401,"se":0.0145,"w":0.8691,"g":0.5795,"a":4},"1642853":{"n":"Rasheer Fleming","t":"PHX","gp":55,"min":673,"pts":238,"fga":215,"fta":27,"ftp":0.7001,"tsa":226.9,"ts":0.5244,"pr":0.54,"se":0.0247,"w":0.6185,"g":0.5653,"a":5},"1630811":{"n":"Keaton Wallace","t":"ATL","gp":53,"min":536,"pts":186,"fga":171,"fta":16,"ftp":0.7273,"tsa":178.3,"ts":0.5217,"pr":0.5399,"se":0.0265,"w":0.5601,"g":0.5631,"a":6},"1630610":{"n":"DeJon Jarreau","t":"MEM","gp":11,"min":231,"pts":88,"fga":83,"fta":22,"ftp":0.8163,"tsa":92.7,"ts":0.4746,"pr":0.5396,"se":0.031,"w":0.3984,"g":0.5826},"1641854":{"n":"Craig Porter Jr.","t":"CLE","gp":64,"min":1148,"pts":289,"fga":258,"fta":37,"ftp":0.6497,"tsa":274.3,"ts":0.5269,"pr":0.5391,"se":0.0233,"w":0.662,"g":0.5631,"a":6},"1631123":{"n":"Jamaree Bouyea","t":"PHX","gp":46,"min":644,"pts":263,"fga":236,"fta":33,"ftp":0.7296,"tsa":250.5,"ts":0.525,"pr":0.5387,"se":0.0239,"w":0.6415,"g":0.5631,"a":6},"203484":{"n":"Kentavious Caldwell-Pope","t":"MEM","gp":51,"min":1088,"pts":428,"fga":366,"fta":86,"ftp":0.85,"tsa":403.8,"ts":0.53,"pr":0.5385,"se":0.0203,"w":0.7425,"g":0.5631,"a":6},"1631351":{"n":"Lucas Williamson","t":"MEM","gp":7,"min":224,"pts":73,"fga":75,"fta":10,"ftp":0.8163,"tsa":79.3,"ts":0.4602,"pr":0.5383,"se":0.032,"w":0.3616,"g":0.5826},"1642883":{"n":"Sion James","t":"CHA","gp":82,"min":1843,"pts":441,"fga":372,"fta":102,"ftp":0.8039,"tsa":416.9,"ts":0.5289,"pr":0.5381,"se":0.0201,"w":0.7486,"g":0.5653,"a":5},"1642874":{"n":"Danny Wolf","t":"BKN","gp":57,"min":1187,"pts":508,"fga":440,"fta":104,"ftp":0.8113,"tsa":485.6,"ts":0.5231,"pr":0.5375,"se":0.0189,"w":0.7762,"g":0.5876,"a":3},"203114":{"n":"Khris Middleton","t":"DAL","gp":63,"min":1439,"pts":640,"fga":540,"fta":141,"ftp":0.8414,"tsa":602.2,"ts":0.5314,"pr":0.5374,"se":0.0174,"w":0.8114,"g":0.5631,"a":6},"1630534":{"n":"Ochai Agbaji","t":"BKN","gp":62,"min":973,"pts":314,"fga":280,"fta":44,"ftp":0.8101,"tsa":299.6,"ts":0.5241,"pr":0.5372,"se":0.0226,"w":0.6815,"g":0.5653,"a":5},"1630679":{"n":"Ethan Thompson","t":"IND","gp":32,"min":653,"pts":223,"fga":196,"fta":52,"ftp":0.7156,"tsa":218.8,"ts":0.5097,"pr":0.537,"se":0.025,"w":0.6098,"g":0.5795,"a":4},"1629630":{"n":"Ja Morant","t":"MEM","gp":20,"min":568,"pts":389,"fga":322,"fta":124,"ftp":0.85,"tsa":376.4,"ts":0.5168,"pr":0.5369,"se":0.0208,"w":0.7289,"g":0.591,"a":2},"1642962":{"n":"Drake Powell","t":"BKN","gp":63,"min":1320,"pts":408,"fga":358,"fta":77,"ftp":0.8977,"tsa":391.8,"ts":0.5206,"pr":0.5361,"se":0.0205,"w":0.7368,"g":0.5795,"a":4},"1629216":{"n":"Gabe Vincent","t":"ATL","gp":53,"min":879,"pts":231,"fga":216,"fta":25,"ftp":0.8044,"tsa":226.9,"ts":0.5089,"pr":0.5359,"se":0.0247,"w":0.6185,"g":0.5795,"a":4},"1641778":{"n":"Leaky Black","t":"WAS","gp":15,"min":433,"pts":106,"fga":103,"fta":9,"ftp":0.7718,"tsa":107.0,"ts":0.4954,"pr":0.535,"se":0.0301,"w":0.4332,"g":0.5653,"a":5},"1629652":{"n":"Luguentz Dort","t":"OKC","gp":69,"min":1849,"pts":576,"fga":524,"fta":59,"ftp":0.7439,"tsa":550.0,"ts":0.5236,"pr":0.535,"se":0.018,"w":0.7971,"g":0.5795,"a":4},"1630692":{"n":"Jordan Goodwin","t":"PHX","gp":70,"min":1572,"pts":609,"fga":555,"fta":51,"ftp":0.7643,"tsa":577.5,"ts":0.5273,"pr":0.5347,"se":0.0177,"w":0.8049,"g":0.5653,"a":5},"1641731":{"n":"Bilal Coulibaly","t":"WAS","gp":56,"min":1468,"pts":657,"fga":541,"fta":185,"ftp":0.7136,"tsa":622.4,"ts":0.5278,"pr":0.5347,"se":0.0171,"w":0.8164,"g":0.5653,"a":5},"101108":{"n":"Chris Paul","t":"LAC","gp":16,"min":228,"pts":47,"fga":56,"fta":1,"ftp":0.775,"tsa":56.6,"ts":0.4154,"pr":0.5345,"se":0.0338,"w":0.2878,"g":0.5826},"1641842":{"n":"Ronald Holland II","t":"DET","gp":78,"min":1551,"pts":640,"fga":544,"fta":145,"ftp":0.8302,"tsa":607.6,"ts":0.5267,"pr":0.5339,"se":0.0173,"w":0.8127,"g":0.5653,"a":5},"1630587":{"n":"Isaiah Livers","t":"PHX","gp":36,"min":347,"pts":65,"fga":64,"fta":12,"ftp":0.7718,"tsa":69.1,"ts":0.4701,"pr":0.5338,"se":0.0327,"w":0.3306,"g":0.5653,"a":5},"1627747":{"n":"Caris LeVert","t":"DET","gp":60,"min":1154,"pts":443,"fga":391,"fta":72,"ftp":0.7882,"tsa":422.8,"ts":0.5239,"pr":0.5336,"se":0.0199,"w":0.7513,"g":0.5631,"a":6},"1642262":{"n":"Cody Williams","t":"UTA","gp":67,"min":1631,"pts":588,"fga":509,"fta":115,"ftp":0.7293,"tsa":559.7,"ts":0.5253,"pr":0.5333,"se":0.0179,"w":0.7999,"g":0.5653,"a":5},"1642450":{"n":"Daniss Jenkins","t":"DET","gp":72,"min":1455,"pts":671,"fga":568,"fta":158,"ftp":0.8482,"tsa":637.5,"ts":0.5263,"pr":0.5329,"se":0.017,"w":0.8199,"g":0.5631,"a":6},"1642869":{"n":"Noah Penda","t":"ORL","gp":59,"min":757,"pts":227,"fga":203,"fta":44,"ftp":0.7429,"tsa":222.5,"ts":0.51,"pr":0.5313,"se":0.0249,"w":0.6138,"g":0.5653,"a":5},"203471":{"n":"Dennis Schr\u00f6der","t":"CLE","gp":70,"min":1696,"pts":756,"fga":629,"fta":209,"ftp":0.817,"tsa":721.1,"ts":0.5242,"pr":0.5305,"se":0.0161,"w":0.8374,"g":0.5631,"a":6},"201566":{"n":"Russell Westbrook","t":"SAC","gp":64,"min":1853,"pts":971,"fga":839,"fta":195,"ftp":0.651,"tsa":924.8,"ts":0.525,"pr":0.53,"se":0.0145,"w":0.8685,"g":0.5631,"a":6},"1643253":{"n":"Toby Okani","t":"MEM","gp":6,"min":217,"pts":60,"fga":70,"fta":1,"ftp":0.721,"tsa":70.6,"ts":0.4249,"pr":0.5297,"se":0.0326,"w":0.3353,"g":0.5826},"1642383":{"n":"Walter Clayton Jr.","t":"MEM","gp":69,"min":1411,"pts":538,"fga":461,"fta":127,"ftp":0.8583,"tsa":516.9,"ts":0.5204,"pr":0.5295,"se":0.0185,"w":0.7869,"g":0.5631,"a":6},"1642847":{"n":"Jeremiah Fears","t":"NOP","gp":82,"min":2112,"pts":1169,"fga":1006,"fta":244,"ftp":0.7965,"tsa":1113.2,"ts":0.5251,"pr":0.5293,"se":0.0134,"w":0.8883,"g":0.5631,"a":6},"1631213":{"n":"Tyrese Martin","t":"PHI","gp":46,"min":777,"pts":290,"fga":277,"fta":24,"ftp":0.7787,"tsa":287.7,"ts":0.5039,"pr":0.5287,"se":0.0229,"w":0.6727,"g":0.5795,"a":4},"201144":{"n":"Mike Conley","t":"MIN","gp":54,"min":991,"pts":245,"fga":215,"fta":59,"ftp":0.7657,"tsa":240.9,"ts":0.5086,"pr":0.5286,"se":0.0242,"w":0.6324,"g":0.5631,"a":6},"1631172":{"n":"Ousmane Dieng","t":"MIL","gp":57,"min":1099,"pts":431,"fga":398,"fta":44,"ftp":0.7342,"tsa":417.2,"ts":0.5166,"pr":0.5283,"se":0.02,"w":0.7487,"g":0.5631,"a":6},"1629001":{"n":"De'Anthony Melton","t":"GSW","gp":49,"min":1125,"pts":602,"fga":528,"fta":117,"ftp":0.8534,"tsa":579.6,"ts":0.5194,"pr":0.5279,"se":0.0176,"w":0.8054,"g":0.5631,"a":6},"1631321":{"n":"Sidy Cissoko","t":"POR","gp":75,"min":1435,"pts":383,"fga":334,"fta":88,"ftp":0.6592,"tsa":372.7,"ts":0.5138,"pr":0.5278,"se":0.0209,"w":0.7269,"g":0.5653,"a":5},"1630311":{"n":"Pat Spencer","t":"GSW","gp":66,"min":1229,"pts":476,"fga":436,"fta":56,"ftp":0.7882,"tsa":460.6,"ts":0.5168,"pr":0.5276,"se":0.0193,"w":0.7669,"g":0.5631,"a":6},"1642964":{"n":"Brooks Barnhizer","t":"OKC","gp":40,"min":348,"pts":68,"fga":71,"fta":9,"ftp":0.7907,"tsa":74.9,"ts":0.454,"pr":0.5265,"se":0.0323,"w":0.3485,"g":0.5653,"a":5},"1642353":{"n":"Cam Christie","t":"LAC","gp":55,"min":480,"pts":156,"fga":139,"fta":46,"ftp":0.8235,"tsa":159.3,"ts":0.4896,"pr":0.525,"se":0.0274,"w":0.5322,"g":0.5653,"a":5},"1631099":{"n":"Keegan Murray","t":"SAC","gp":23,"min":793,"pts":321,"fga":300,"fta":52,"ftp":0.7314,"tsa":322.9,"ts":0.4971,"pr":0.5245,"se":0.022,"w":0.6975,"g":0.5876,"a":3},"1642269":{"n":"Devin Carter","t":"SAC","gp":38,"min":700,"pts":339,"fga":292,"fta":95,"ftp":0.7077,"tsa":333.7,"ts":0.508,"pr":0.5243,"se":0.0217,"w":0.7044,"g":0.5631,"a":6},"1631106":{"n":"Tari Eason","t":"HOU","gp":60,"min":1549,"pts":627,"fga":580,"fta":70,"ftp":0.7392,"tsa":611.0,"ts":0.5131,"pr":0.5228,"se":0.0173,"w":0.8136,"g":0.5653,"a":5},"1642404":{"n":"Chaz Lanier","t":"DET","gp":34,"min":262,"pts":80,"fga":89,"fta":6,"ftp":0.775,"tsa":91.8,"ts":0.4355,"pr":0.5225,"se":0.0311,"w":0.3961,"g":0.5795,"a":4},"1642484":{"n":"RayJ Dennis","t":"ATL","gp":17,"min":206,"pts":74,"fga":83,"fta":10,"ftp":0.8044,"tsa":87.4,"ts":0.4235,"pr":0.5214,"se":0.0314,"w":0.3843,"g":0.5826},"1630526":{"n":"Jeremiah Robinson-Earl","t":"DAL","gp":22,"min":361,"pts":101,"fga":100,"fta":21,"ftp":0.8269,"tsa":109.0,"ts":0.4631,"pr":0.5205,"se":0.03,"w":0.4379,"g":0.5653,"a":5},"1627827":{"n":"Dorian Finney-Smith","t":"HOU","gp":37,"min":620,"pts":123,"fga":132,"fta":10,"ftp":0.8044,"tsa":136.4,"ts":0.451,"pr":0.5161,"se":0.0285,"w":0.4934,"g":0.5795,"a":4},"1631126":{"n":"Caleb Love","t":"POR","gp":49,"min":1013,"pts":509,"fga":490,"fta":47,"ftp":0.7722,"tsa":510.5,"ts":0.4985,"pr":0.516,"se":0.0186,"w":0.7848,"g":0.5795,"a":4},"1630175":{"n":"Cole Anthony","t":"MIL","gp":35,"min":527,"pts":234,"fga":231,"fta":20,"ftp":0.8163,"tsa":239.6,"ts":0.4883,"pr":0.5159,"se":0.0243,"w":0.6312,"g":0.5631,"a":6},"1642363":{"n":"Nique Clifford","t":"SAC","gp":75,"min":1882,"pts":645,"fga":596,"fta":98,"ftp":0.7149,"tsa":639.1,"ts":0.5046,"pr":0.5155,"se":0.017,"w":0.8203,"g":0.5653,"a":5},"1641712":{"n":"Rayan Rupert","t":"MEM","gp":64,"min":1073,"pts":332,"fga":313,"fta":55,"ftp":0.7657,"tsa":337.1,"ts":0.4924,"pr":0.5138,"se":0.0217,"w":0.7066,"g":0.5653,"a":5},"1641722":{"n":"Jordan Hawkins","t":"NOP","gp":51,"min":692,"pts":258,"fga":257,"fta":28,"ftp":0.819,"tsa":269.4,"ts":0.4789,"pr":0.5133,"se":0.0234,"w":0.658,"g":0.5795,"a":4},"1642880":{"n":"Kam Jones","t":"IND","gp":37,"min":616,"pts":162,"fga":169,"fta":6,"ftp":0.7116,"tsa":171.5,"ts":0.4724,"pr":0.5132,"se":0.0268,"w":0.5505,"g":0.5631,"a":6},"1630172":{"n":"Patrick Williams","t":"CHI","gp":72,"min":1474,"pts":505,"fga":478,"fta":76,"ftp":0.7131,"tsa":511.3,"ts":0.4938,"pr":0.5122,"se":0.0185,"w":0.7851,"g":0.5795,"a":4},"1641989":{"n":"Elijah Harkless","t":"UTA","gp":26,"min":545,"pts":178,"fga":161,"fta":63,"ftp":0.7722,"tsa":188.9,"ts":0.4711,"pr":0.5103,"se":0.0261,"w":0.5744,"g":0.5631,"a":6},"1642948":{"n":"Ryan Nembhard","t":"DAL","gp":60,"min":1171,"pts":397,"fga":390,"fta":32,"ftp":0.7891,"tsa":403.9,"ts":0.4914,"pr":0.5099,"se":0.0203,"w":0.7426,"g":0.5631,"a":6},"1642905":{"n":"Yang Hansen","t":"POR","gp":43,"min":300,"pts":95,"fga":100,"fta":33,"ftp":0.8412,"tsa":114.6,"ts":0.4143,"pr":0.5096,"se":0.0297,"w":0.4502,"g":0.5876,"a":3},"1631107":{"n":"Nikola Jovi\u0107","t":"MIA","gp":47,"min":808,"pts":344,"fga":314,"fta":105,"ftp":0.6598,"tsa":360.0,"ts":0.4778,"pr":0.5085,"se":0.0212,"w":0.72,"g":0.5876,"a":3},"1630529":{"n":"Herbert Jones","t":"NOP","gp":56,"min":1588,"pts":496,"fga":478,"fta":58,"ftp":0.865,"tsa":503.4,"ts":0.4926,"pr":0.5084,"se":0.0187,"w":0.7824,"g":0.5653,"a":5},"1642879":{"n":"Ben Saraf","t":"BKN","gp":44,"min":916,"pts":332,"fga":303,"fta":89,"ftp":0.8163,"tsa":342.3,"ts":0.4849,"pr":0.5076,"se":0.0215,"w":0.7098,"g":0.5631,"a":6},"1642347":{"n":"Jamal Shead","t":"TOR","gp":82,"min":1852,"pts":545,"fga":504,"fta":112,"ftp":0.8154,"tsa":553.1,"ts":0.4927,"pr":0.5069,"se":0.018,"w":0.798,"g":0.5631,"a":6},"1642354":{"n":"KJ Simpson","t":"DEN","gp":20,"min":258,"pts":91,"fga":99,"fta":15,"ftp":0.7551,"tsa":105.4,"ts":0.4317,"pr":0.5067,"se":0.0302,"w":0.4295,"g":0.5631,"a":6},"1642942":{"n":"Jahmai Mashack","t":"MEM","gp":31,"min":673,"pts":192,"fga":195,"fta":29,"ftp":0.6572,"tsa":207.7,"ts":0.4622,"pr":0.5037,"se":0.0254,"w":0.5974,"g":0.5653,"a":5},"1631246":{"n":"Vince Williams Jr.","t":"UTA","gp":40,"min":819,"pts":300,"fga":292,"fta":51,"ftp":0.7657,"tsa":314.4,"ts":0.4771,"pr":0.5036,"se":0.0222,"w":0.6919,"g":0.5631,"a":6},"1630544":{"n":"Tre Mann","t":"CHA","gp":53,"min":668,"pts":291,"fga":303,"fta":28,"ftp":0.8125,"tsa":315.5,"ts":0.4612,"pr":0.5011,"se":0.0222,"w":0.6926,"g":0.591,"a":2},"1641748":{"n":"Andre Jackson Jr.","t":"MIL","gp":48,"min":408,"pts":113,"fga":119,"fta":27,"ftp":0.7273,"tsa":131.1,"ts":0.431,"pr":0.5003,"se":0.0287,"w":0.4836,"g":0.5653,"a":5},"1642849":{"n":"Nolan Traore","t":"BKN","gp":56,"min":1243,"pts":499,"fga":479,"fta":100,"ftp":0.7386,"tsa":523.1,"ts":0.477,"pr":0.4952,"se":0.0184,"w":0.7889,"g":0.5631,"a":6},"1626145":{"n":"Tyus Jones","t":"DEN","gp":67,"min":979,"pts":199,"fga":218,"fta":9,"ftp":0.7857,"tsa":221.9,"ts":0.4484,"pr":0.4928,"se":0.0249,"w":0.6132,"g":0.5631,"a":6},"1642877":{"n":"Micah Peavy","t":"NOP","gp":61,"min":913,"pts":262,"fga":275,"fta":28,"ftp":0.774,"tsa":287.5,"ts":0.4556,"pr":0.4915,"se":0.0229,"w":0.6725,"g":0.5653,"a":5},"1642265":{"n":"Rob Dillingham","t":"CHI","gp":65,"min":970,"pts":409,"fga":412,"fta":56,"ftp":0.7329,"tsa":436.6,"ts":0.4684,"pr":0.4914,"se":0.0197,"w":0.7572,"g":0.5631,"a":6},"1630165":{"n":"Killian Hayes","t":"SAC","gp":23,"min":406,"pts":127,"fga":138,"fta":31,"ftp":0.8269,"tsa":151.8,"ts":0.4182,"pr":0.4877,"se":0.0277,"w":0.5203,"g":0.5631,"a":6},"1642358":{"n":"AJ Johnson","t":"DAL","gp":48,"min":453,"pts":160,"fga":176,"fta":43,"ftp":0.7988,"tsa":194.7,"ts":0.4108,"pr":0.4745,"se":0.0259,"w":0.5818,"g":0.5631,"a":6}},"groups":[{"name":"Rim-running big","players":38,"ts":0.6441},{"name":"Post scorer","players":13,"ts":0.6046},{"name":"Primary creator","players":45,"ts":0.591},{"name":"Stretch big","players":52,"ts":0.5876},{"name":"Off-ball shooter","players":81,"ts":0.5795},{"name":"Defensive specialist","players":65,"ts":0.5653},{"name":"Secondary playmaker","players":82,"ts":0.5631}],"calibration":{"cut":"January 15","n":395,"rmse":0.1235,"raw":0.1514,"full":0.1371,"curve":[[0.0,0.15137],[20.0,0.13375],[40.0,0.12825],[60.0,0.12573],[80.0,0.12446],[100.0,0.12383],[120.0,0.12355],[140.0,0.12348],[160.0,0.12354],[180.0,0.12368],[200.0,0.12387],[220.0,0.12409],[240.0,0.12432],[260.0,0.12457],[280.0,0.12482],[300.0,0.12507],[320.0,0.12532],[340.0,0.12556],[360.0,0.1258],[380.0,0.12603],[400.0,0.12626],[420.0,0.12648],[440.0,0.12669],[460.0,0.1269],[480.0,0.12709],[500.0,0.12729],[520.0,0.12747],[540.0,0.12765],[560.0,0.12783],[580.0,0.128],[600.0,0.12816],[620.0,0.12832],[640.0,0.12847],[660.0,0.12861],[680.0,0.12876],[700.0,0.1289],[720.0,0.12903],[740.0,0.12916],[760.0,0.12928],[780.0,0.12941],[800.0,0.12952]],"buckets":[{"label":"Under 100","n":94,"raw":0.2214,"pooled":0.1605,"gain":0.275},{"label":"100\u2013200","n":96,"raw":0.1646,"pooled":0.1454,"gain":0.1164},{"label":"200\u2013350","n":102,"raw":0.1013,"pooled":0.095,"gain":0.0621},{"label":"350+","n":103,"raw":0.088,"pooled":0.0795,"gain":0.096}]}};
+var $ = function (id) { return document.getElementById(id); };
+var tip = $("tip");
+var POOLED = "#2166AC", RAW = "#B35806", FAINT = "#7D8A82", INK = "#14201B";
+var pct = function (v, d) { return (v * 100).toFixed(d === undefined ? 1 : d) + "%"; };
+
+function showTip(e, html) {
+  tip.innerHTML = html;
+  tip.style.opacity = 1;
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - 230) + "px";
+  tip.style.top = (e.clientY + 16) + "px";
+}
+function hideTip() { tip.style.opacity = 0; }
+
+/* ---- headshot: portrait over a monogram ------------------------------ */
+function monogram(name, color) {
+  var letters = name.split(/[\s\-']+/).filter(Boolean).slice(0, 2)
+    .map(function (w) { return w[0].toUpperCase(); }).join("") || "?";
+  return "data:image/svg+xml;base64," + btoa(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 190'>" +
+    "<rect width='260' height='190' fill='" + color + "'/>" +
+    "<text x='130' y='128' text-anchor='middle' font-size='84' font-weight='700' " +
+    "font-family='Helvetica,Arial,sans-serif' fill='#FFFFFF'>" + letters + "</text></svg>");
+}
+
+/* ---- stat tiles ------------------------------------------------------- */
+var cal = D.calibration;
+var gain = 1 - cal.rmse / cal.raw;
+$("tiles").innerHTML = [
+  ["Pooling constant", D.k.toFixed(0),
+   "attempts at which a player's own record and his archetype's count equally"],
+  ["Held-out error", "&minus;" + Math.round(gain * 100) + "%",
+   "against trusting a player's own number, over " + cal.n + " players"],
+  ["Under 100 attempts", "&minus;" + Math.round(cal.buckets[0].gain * 100) + "%",
+   "the same comparison for the thinnest samples, where it matters"],
+  ["League true shooting", pct(D.league),
+   "the pool of last resort, for a player with no archetype"]
+].map(function (t) {
+  return "<div class='tile'><span class='k'>" + t[0] + "</span>" +
+         "<span class='v'>" + t[1] + "</span><div class='n'>" + t[2] + "</div></div>";
+}).join("");
+$("nplayers").textContent = Object.keys(D.players).length;
+$("sub").textContent = D.season + " season · " + Object.keys(D.players).length +
+  " players · " + D.groups.length + " archetypes";
+
+/* ---- the fan ---------------------------------------------------------- */
+var fan = $("fan"), fx = fan.getContext("2d");
+var PAD = { l: 62, r: 18, t: 16, b: 46 };
+var TICKS = [50, 100, 200, 400, 800, 1600];
+var rows = Object.keys(D.players).map(function (id) {
+  var p = D.players[id];
+  return { id: id, n: p.n, tsa: p.tsa, ts: p.ts, pr: p.pr, a: p.a, w: p.w };
+});
+var xlo = Math.log10(Math.max(20, Math.min.apply(null, rows.map(function (r) { return r.tsa; }))));
+var xhi = Math.log10(Math.max.apply(null, rows.map(function (r) { return r.tsa; })) * 1.05);
+var ylo = 0.36, yhi = 0.82;
+function px(v) { return PAD.l + (Math.log10(v) - xlo) / (xhi - xlo) * (fan.width - PAD.l - PAD.r); }
+function py(v) { return fan.height - PAD.b - (v - ylo) / (yhi - ylo) * (fan.height - PAD.t - PAD.b); }
+
+var selected = null;
+function drawFan() {
+  fx.clearRect(0, 0, fan.width, fan.height);
+
+  /* recessive grid and axes, drawn first */
+  fx.strokeStyle = "rgba(20,32,27,.10)"; fx.lineWidth = 1;
+  fx.fillStyle = "#4B5A52"; fx.font = "500 15px ui-monospace,Menlo,monospace";
+  for (var v = 0.40; v <= 0.801; v += 0.10) {
+    var y = py(v);
+    fx.beginPath(); fx.moveTo(PAD.l, y); fx.lineTo(fan.width - PAD.r, y); fx.stroke();
+    fx.textAlign = "right"; fx.textBaseline = "middle";
+    fx.fillText(Math.round(v * 100) + "%", PAD.l - 10, y);
+  }
+  fx.textAlign = "center"; fx.textBaseline = "top";
+  TICKS.forEach(function (t) {
+    if (t < Math.pow(10, xlo) || t > Math.pow(10, xhi)) return;
+    fx.fillText(t.toLocaleString(), px(t), fan.height - PAD.b + 10);
+  });
+  fx.fillText("True shooting attempts", (PAD.l + fan.width - PAD.r) / 2,
+              fan.height - PAD.b + 30);
+
+  /* the league line: what a player with no record at all would be given */
+  fx.strokeStyle = "rgba(20,32,27,.30)"; fx.setLineDash([5, 5]);
+  fx.beginPath(); fx.moveTo(PAD.l, py(D.league)); fx.lineTo(fan.width - PAD.r, py(D.league));
+  fx.stroke(); fx.setLineDash([]);
+
+  /* Three passes rather than one per player: 450 dumbbells drawn end to end
+     smear into a blob, but every segment first, then every hollow mark, then
+     every filled one, reads as three layers and the fan shape comes out. */
+  var order = rows.slice().sort(function (a, b) { return a.tsa - b.tsa; });
+
+  fx.strokeStyle = "rgba(20,32,27,.34)"; fx.lineWidth = 1.4;
+  order.forEach(function (r) {
+    if (selected === r.id) return;
+    var x = px(r.tsa);
+    fx.beginPath(); fx.moveTo(x, py(r.ts)); fx.lineTo(x, py(r.pr)); fx.stroke();
+  });
+
+  fx.strokeStyle = FAINT; fx.lineWidth = 1.8;
+  order.forEach(function (r) {
+    if (selected === r.id) return;
+    fx.beginPath(); fx.arc(px(r.tsa), py(r.ts), 5.4, 0, Math.PI * 2); fx.stroke();
+  });
+
+  order.forEach(function (r) {
+    if (selected === r.id) return;
+    fx.beginPath(); fx.arc(px(r.tsa), py(r.pr), 5.6, 0, Math.PI * 2);
+    fx.fillStyle = POOLED; fx.fill();
+    /* a surface ring, so neighbouring marks stay countable where they overlap */
+    fx.strokeStyle = "#ECEFE6"; fx.lineWidth = 2; fx.stroke();
+  });
+
+  /* the selected player last and on top, with his name beside him */
+  var sel = rows.filter(function (r) { return r.id === selected; })[0];
+  if (sel) {
+    var x = px(sel.tsa), y1 = py(sel.ts), y2 = py(sel.pr);
+    fx.strokeStyle = INK; fx.lineWidth = 2.5;
+    fx.beginPath(); fx.moveTo(x, y1); fx.lineTo(x, y2); fx.stroke();
+    fx.beginPath(); fx.arc(x, y1, 7.5, 0, Math.PI * 2);
+    fx.strokeStyle = "#ECEFE6"; fx.lineWidth = 4; fx.stroke();
+    fx.strokeStyle = INK; fx.lineWidth = 2.6; fx.stroke();
+    fx.beginPath(); fx.arc(x, y2, 8, 0, Math.PI * 2);
+    fx.fillStyle = INK; fx.fill();
+    fx.strokeStyle = "#ECEFE6"; fx.lineWidth = 2.5; fx.stroke();
+    var right = x > fan.width * 0.62;
+    label(sel.n, x + (right ? -24 : 24), Math.min(y1, y2) - 14,
+          right ? "right" : "left", INK, "700 17px ui-monospace,Menlo,monospace");
+  }
+
+  /* Chart furniture goes on top of the marks, on its own paper, or it reads as
+     one more data point in a chart that already has nine hundred. */
+  label("league " + pct(D.league), fan.width - PAD.r - 8, py(D.league), "right");
+  label("True shooting %", PAD.l - 44, PAD.t + 8, "left");
+}
+
+function label(text, x, y, align, color, font) {
+  fx.font = font || "500 15px ui-monospace,Menlo,monospace";
+  fx.textAlign = align; fx.textBaseline = "middle";
+  var w = fx.measureText(text).width;
+  fx.fillStyle = "#ECEFE6";
+  fx.fillRect(align === "right" ? x - w - 6 : x - 6, y - 11, w + 12, 22);
+  fx.fillStyle = color || "#4B5A52";
+  fx.fillText(text, x, y);
+}
+
+fan.addEventListener("mousemove", function (e) {
+  var box = fan.getBoundingClientRect();
+  var mx = (e.clientX - box.left) * fan.width / box.width;
+  var my = (e.clientY - box.top) * fan.height / box.height;
+  var best = null, bestD = 18;
+  rows.forEach(function (r) {
+    var x = px(r.tsa);
+    var d = Math.min(Math.hypot(mx - x, my - py(r.ts)), Math.hypot(mx - x, my - py(r.pr)));
+    if (d < bestD) { bestD = d; best = r; }
+  });
+  if (!best) { hideTip(); fan.style.cursor = "default"; return; }
+  fan.style.cursor = "pointer";
+  showTip(e, "<b>" + best.n + "</b><br>" +
+    Math.round(best.tsa).toLocaleString() + " attempts &middot; " +
+    (best.a === undefined ? "not clustered" : D.groups[best.a].name) + "<br>" +
+    "shot " + pct(best.ts) + " &rarr; projected " + pct(best.pr) + "<br>" +
+    Math.round(best.w * 100) + "% his own record");
+});
+fan.addEventListener("mouseleave", hideTip);
+fan.addEventListener("click", function (e) {
+  var box = fan.getBoundingClientRect();
+  var mx = (e.clientX - box.left) * fan.width / box.width;
+  var my = (e.clientY - box.top) * fan.height / box.height;
+  var best = null, bestD = 18;
+  rows.forEach(function (r) {
+    var x = px(r.tsa);
+    var d = Math.min(Math.hypot(mx - x, my - py(r.ts)), Math.hypot(mx - x, my - py(r.pr)));
+    if (d < bestD) { bestD = d; best = r; }
+  });
+  if (best) { $("team").value = D.players[best.id].t; fillPlayers(D.players[best.id].t, best.id); }
+});
+
+/* ---- calibration curve ------------------------------------------------ */
+var cv = $("curve"), cc = cv.getContext("2d");
+(function drawCurve() {
+  var pad = { l: 68, r: 20, t: 18, b: 52 };
+  var ks = cal.curve.map(function (p) { return p[0]; });
+  var es = cal.curve.map(function (p) { return p[1]; });
+  var kMax = Math.max.apply(null, ks);
+  var eLo = Math.min.apply(null, es), eHi = Math.max.apply(null, es);
+  eLo -= (eHi - eLo) * 0.12; eHi += (eHi - eLo) * 0.06;
+  var X = function (k) { return pad.l + k / kMax * (cv.width - pad.l - pad.r); };
+  var Y = function (e) { return cv.height - pad.b - (e - eLo) / (eHi - eLo) * (cv.height - pad.t - pad.b); };
+
+  cc.clearRect(0, 0, cv.width, cv.height);
+  cc.font = "500 15px ui-monospace,Menlo,monospace"; cc.fillStyle = "#4B5A52";
+  cc.strokeStyle = "rgba(20,32,27,.10)"; cc.lineWidth = 1;
+  // round gridline values, not four arbitrary thirds of the data range
+  var step = 0.005;
+  for (var e = Math.ceil(eLo / step) * step; e <= eHi; e += step) {
+    var y = Y(e);
+    cc.beginPath(); cc.moveTo(pad.l, y); cc.lineTo(cv.width - pad.r, y); cc.stroke();
+    cc.textAlign = "right"; cc.textBaseline = "middle";
+    cc.fillText(e.toFixed(3), pad.l - 10, y);
+  }
+  cc.textAlign = "center"; cc.textBaseline = "top";
+  [0, 200, 400, 600, 800].forEach(function (k) {
+    if (k > kMax) return;
+    cc.fillText(String(k), X(k), cv.height - pad.b + 10);
+  });
+  cc.fillText("k, in attempts", (pad.l + cv.width - pad.r) / 2, cv.height - pad.b + 30);
+  cc.textAlign = "left"; cc.textBaseline = "top";
+  cc.fillText("held-out RMSE", pad.l - 46, 2);
+
+  cc.strokeStyle = POOLED; cc.lineWidth = 2.5; cc.lineJoin = "round";
+  cc.beginPath();
+  cal.curve.forEach(function (p, i) {
+    if (i === 0) cc.moveTo(X(p[0]), Y(p[1])); else cc.lineTo(X(p[0]), Y(p[1]));
+  });
+  cc.stroke();
+
+  var mx = X(D.k), my = Y(cal.rmse);
+  cc.strokeStyle = "rgba(20,32,27,.35)"; cc.lineWidth = 1; cc.setLineDash([4, 4]);
+  cc.beginPath(); cc.moveTo(mx, my); cc.lineTo(mx, cv.height - pad.b); cc.stroke();
+  cc.setLineDash([]);
+  cc.beginPath(); cc.arc(mx, my, 6.5, 0, Math.PI * 2);
+  cc.fillStyle = POOLED; cc.fill();
+  cc.strokeStyle = "#ECEFE6"; cc.lineWidth = 2.5; cc.stroke();
+  cc.fillStyle = INK; cc.font = "700 16px ui-monospace,Menlo,monospace";
+  cc.textAlign = mx > cv.width * 0.6 ? "right" : "left"; cc.textBaseline = "bottom";
+  cc.fillText("k = " + D.k.toFixed(0), mx + (mx > cv.width * 0.6 ? -12 : 12), my - 10);
+})();
+$("curvecap").innerHTML =
+  "Held-out error against every candidate <em>k</em>: fit on games before " +
+  cal.cut + ", scored on what each player shot afterwards. At <em>k</em>&nbsp;=&nbsp;0 " +
+  "a player is taken entirely at his word (" + cal.raw.toFixed(3) + "); far to the " +
+  "right his own record is thrown away and everyone is given the league mean (" +
+  cal.full.toFixed(3) + "). The curve has an interior minimum, which is the whole " +
+  "argument for partial pooling &mdash; and its location, not a preference, is what " +
+  "sets <em>k</em>.";
+
+/* ---- bucketed comparison ---------------------------------------------- */
+(function drawBuckets() {
+  var top = Math.max.apply(null, cal.buckets.map(function (b) { return b.raw; })) * 1.14;
+  $("buckets").innerHTML = cal.buckets.map(function (b) {
+    function bar(value, color) {
+      return "<div class='b'><span class='fill' style='width:" +
+        (value / top * 100).toFixed(1) + "%;background:" + color + "'></span>" +
+        "<span class='v'>" + value.toFixed(3) + "</span></div>";
+    }
+    return "<div class='grp'><div class='lb'><span>" + b.label + " attempts &middot; " +
+      b.n + " players</span><span class='gain'>&minus;" +
+      Math.round(b.gain * 100) + "%</span></div>" +
+      bar(b.raw, RAW) + bar(b.pooled, POOLED) + "</div>";
+  }).join("");
+})();
+$("bucketcap").innerHTML =
+  "The same held-out error, split by how many shots a player had actually taken " +
+  "by " + cal.cut + " &mdash; lower is better. Pooling helps in every band, but " +
+  "it is worth " + Math.round(cal.buckets[0].gain * 100) + "% to players under " +
+  "a hundred attempts and single digits to low double digits above that. The " +
+  "bands past the first are close enough to each other that their order is " +
+  "noise; the first one is not.";
+
+/* ---- archetype table --------------------------------------------------- */
+function drawGroups(activeIndex) {
+  $("groups").querySelector("tbody").innerHTML = D.groups.map(function (g, i) {
+    return "<tr class='" + (i === activeIndex ? "on" : "") + "'><td>" + g.name +
+      "</td><td class='num'>" + g.players + "</td><td class='num'>" +
+      pct(g.ts) + "</td></tr>";
+  }).join("");
+}
+$("groupcap").innerHTML =
+  "What a low-volume player is pulled toward, so a reserve big is measured " +
+  "against other bigs rather than against pull-up guards. The archetypes come " +
+  "from clustering every player on the shots he takes and the passing, rebounding " +
+  "and defence around them &mdash; see the " +
+  "<a href='nba-scouting.html' style='color:inherit'>scouting dashboard</a>. " +
+  "Players who fall under the minutes floor have no archetype and are pulled " +
+  "toward the league instead.";
+
+/* ---- the selected player ----------------------------------------------- */
+function render(pid) {
+  selected = String(pid);
+  var p = D.players[pid], team = D.teams[p.t];
+  document.documentElement.style.setProperty("--team", team.color);
+
+  $("head").style.backgroundImage =
+    "url('https://cdn.nba.com/headshots/nba/latest/1040x760/" + pid + ".png'), url('" +
+    monogram(p.n, team.color) + "')";
+  $("head").setAttribute("role", "img");
+  $("head").setAttribute("aria-label", p.n);
+  $("pname").textContent = p.n;
+  $("pteam").textContent = team.name + " · " + p.t + " · " + D.season;
+
+  var chip = $("parch");
+  chip.className = p.a === undefined ? "chip none" : "chip";
+  chip.textContent = p.a === undefined ? "Not clustered" : D.groups[p.a].name;
+
+  /* the gauge is drawn on a fixed scale so two players can be compared */
+  var lo = 0.40, hi = 0.78;
+  var at = function (v) { return ((Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo) * 100).toFixed(2); };
+  var low = p.pr - 1.96 * p.se, high = p.pr + 1.96 * p.se;
+  var ticks = [0.42, 0.48, 0.54, 0.60, 0.66, 0.72].map(function (t) {
+    return "<span class='tick' style='left:" + at(t) + "%'></span>" +
+           "<span class='tickl' style='left:" + at(t) + "%'>" + Math.round(t * 100) + "%</span>";
+  }).join("");
+  $("rail").innerHTML =
+    "<span class='axis'></span>" + ticks +
+    "<span class='band' style='left:" + at(low) + "%;width:" +
+      (at(high) - at(low)).toFixed(2) + "%'></span>" +
+    "<span class='stem' style='left:" + at(p.ts) + "%;top:58px;height:30px'></span>" +
+    "<span class='pt shot' style='left:" + at(p.ts) + "%'></span>" +
+    "<span class='lab shot' style='left:" + at(p.ts) + "%'>" + pct(p.ts) +
+      "<span class='n'>shot</span></span>" +
+    "<span class='pt proj' style='left:" + at(p.pr) + "%'></span>" +
+    "<span class='lab proj' style='left:" + at(p.pr) + "%'>" + pct(p.pr) +
+      "<span class='n'>projected</span></span>";
+
+  var groupName = p.a === undefined ? "the league" : D.groups[p.a].name;
+  $("split").innerHTML =
+    "On <b>" + Math.round(p.tsa).toLocaleString() + "</b> true shooting attempts " +
+    "(" + p.fga.toLocaleString() + " from the field, " + p.fta.toLocaleString() +
+    " from the line at " + pct(p.ftp, 0) + "), <b>" + Math.round(p.w * 100) +
+    "%</b> of the projection is what " + p.n + " shot and <b>" +
+    Math.round((1 - p.w) * 100) + "%</b> is " + groupName + " at " + pct(p.g) +
+    ". The 95% interval runs " + pct(low) + " to " + pct(high) + ".";
+
+  $("fansel").innerHTML = "&#9679;&nbsp; " + p.n;
+  drawGroups(p.a);
+  drawFan();
+  history.replaceState(null, "", "#" + p.t + "/" + pid);
+}
+
+/* ---- controls ---------------------------------------------------------- */
+function fillPlayers(tricode, pid) {
+  var select = $("player"), list = D.teams[tricode].players;
+  select.innerHTML = list.map(function (id) {
+    return "<option value='" + id + "'>" + D.players[id].n + "</option>";
+  }).join("");
+  select.value = (pid && list.indexOf(Number(pid)) >= 0) ? pid : list[0];
+  render(select.value);
+}
+$("team").innerHTML = Object.keys(D.teams).map(function (tricode) {
+  return "<option value='" + tricode + "'>" + D.teams[tricode].name + "</option>";
+}).join("");
+$("team").addEventListener("change", function () { fillPlayers(this.value, null); });
+$("player").addEventListener("change", function () { render(this.value); });
+
+var start = (location.hash || "").replace("#", "").split("/");
+var team0 = D.teams[start[0]] ? start[0] : Object.keys(D.teams)[0];
+$("team").value = team0;
+fillPlayers(team0, start[1]);
+})();
+</script>
+</body>
+</html>

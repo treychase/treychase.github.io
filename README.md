@@ -167,7 +167,7 @@ the note under *Publishing a rendered Quarto document* below.
 
 ## The hosted dashboards
 
-Six files in `projects/` are not write-ups but the dashboards themselves,
+Seven files in `projects/` are not write-ups but the dashboards themselves,
 each a single self-contained page, so a project card can link to something that
 loads immediately rather than waiting on a Space to wake up:
 
@@ -179,6 +179,7 @@ loads immediately rather than waiting on a Space to wake up:
 | `projects/run-value-matrix.html` | `tools/` in this repo, from the run values repo | `python tools/build_run_values_page.py --rds <that repo>/master_run_values.rds` |
 | `projects/stock-forecast-dashboard.html` | `tools/` in this repo, from the Bayesian time-series repo | `python tools/build_stock_dashboard.py --repo <that repo>` |
 | `projects/nba-scouting.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_nba_scouting_page.py --repo <that repo>` |
+| `projects/true-shooting-projection.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_shooting_projection_page.py --repo <that repo>` |
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
@@ -200,10 +201,12 @@ diverging heatmap. `build_nba_scouting_page.py` is the same shape again: it
 imports the nba-stats repo's own clustering rather than reimplementing it, bins
 every shot in that repo's shot chart pull onto one hex lattice shared by all
 582 players — which is what keeps the whole league inside 600 KB — and writes
-the result into `nba_scouting_template.html`. It is the one page here that
-fetches anything at view time: headshots come straight from the NBA's CDN by
+the result into `nba_scouting_template.html`. It is one of two pages here that
+fetch anything at view time: headshots come straight from the NBA's CDN by
 player id, stacked over an inline monogram so a player the CDN has no portrait
-for still gets a card. `build_stock_dashboard.py` is the third of the pair
+for still gets a card. `build_shooting_projection_page.py` is its sibling, and
+imports that repo's reconstruction, calibration and pooling the same way; its
+payload is small because everything on the page is one number per player. `build_stock_dashboard.py` is the third of the pair
 kind: it imports the forecasting project's own model rather than reimplementing
 it, fits every ticker in that project's bundled offline sample, and writes the
 history, the fitted level, the regime probabilities and the seven-day fan into

@@ -221,7 +221,9 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
       <p class="caption">
         Closest in the same feature space, so this reads as <em>used the same
         way</em> rather than <em>scores the same amount</em>. Click a row to
-        scout them.
+        scout them. The archetypes are also what
+        <a href="true-shooting-projection.html" style="color:inherit">projected
+        true shooting</a> pools a small sample toward.
       </p>
     </div>
   </div>
@@ -233,17 +235,25 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
 
   <div class="note">
     <b>How the archetypes are built</b>
-    K&#8209;means over eighteen tracking features &mdash; paint, post and elbow
-    touches, drives, catch&#8209;and&#8209;shoot and pull&#8209;up volume, passing
-    and potential assists, time of possession, rebound chances, rim shots
-    defended, blocks and steals &mdash; all taken as per&#8209;36 rates, so the
-    clustering finds roles instead of rediscovering the minutes rotation. The
-    number of clusters is read off the silhouette score rather than picked by
-    hand, and each cluster is named by matching its centre against prototype
-    weight vectors; a cluster defined only by what its players <em>don't</em> do
-    is called a low&#8209;usage role player rather than borrowing a name it has
-    not earned. Players under 250 minutes are left out: their rate stats are
-    mostly noise and would drag the cluster centres around.
+    K&#8209;means over fifteen tracking features in three families: field goal
+    frequency and type (catch&#8209;and&#8209;shoot attempts and threes,
+    pull&#8209;up attempts and threes, drives, and attempts from the paint, the
+    post and the elbow), passing (passes made, potential assists, assists per
+    pass), and rebounding, steals and blocks. Deliberately no touch counts &mdash;
+    a touch says a player had the ball, not what he did with it, so clustering on
+    touches groups everyone who gets fed regardless of whether they shoot, pass or
+    draw a foul. Everything is a per&#8209;36 rate, so the clustering finds roles
+    instead of rediscovering the minutes rotation.
+    <br><br>
+    The number of clusters comes off the silhouette score rather than a
+    preference, subject to one rule: no archetype may hold more than a quarter of
+    the league or fewer than 3% of it. Unconstrained, the silhouette prefers four
+    clusters, one of which is half of everybody &mdash; true about the data, and
+    useless to scout with. Each cluster is named by matching its centre against
+    prototype weight vectors, and one defined only by what its players
+    <em>don't</em> do is called a low&#8209;usage role player rather than
+    borrowing a name it has not earned. Players under 250 minutes are left out:
+    their rate stats are mostly noise and would drag the cluster centres around.
   </div>
 </main>
 

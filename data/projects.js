@@ -210,16 +210,22 @@ window.SITE_DATA = {
     },
     {
       section: "basketball",
-      title: "True shooting projection, Bayesian AR",
-      summary: "What a player is likely to shoot next season, which is not the same question as what he shot last season.",
+      title: "Projected true shooting",
+      summary: "What a player is likely to shoot next, which is not the same question as what he shot.",
+      pinned: true,
       year: "2026",
-      tags: ["Front office tool"],
+      tags: ["Front office tool", "Hierarchical model"],
       status: "",
       body: [
-        "An autoregressive model that predicts next-season true shooting percentage from age and prior shooting rates, fit both pooled and hierarchically so young players with short histories borrow strength from the league. Built for free agency decisions, where the question is not how a player shot last year but what he is likely to shoot next year."
+        "A rotation big with 180 attempts at 64% is mostly telling you about variance, and taking that number at face value is how a team talks itself into a contract. This estimates every player's true shooting by pulling what he shot toward the players who are used the way he is used, by an amount his own volume decides. A thousand-attempt starter keeps almost all of his own number; a hundred-attempt reserve is written mostly in terms of his archetype.",
+        "Getting true shooting out of the data at all took an arithmetic detour, since the committed pulls carry no box score. Season points come from the possessions tracking and every made field goal comes from the shot chart, so free throws made are points minus what the field goals were worth: exact, not estimated, and non-negative for all 450 players. Turning makes into attempts needs a free throw percentage, taken from the fouls the tracking data does cover and pooled toward the league first, because nine tracked makes should not buy a player a perfect stroke.",
+        "The model itself is the hierarchical normal one, which has a closed-form posterior mean and needs no sampler. Two choices do the work. The pool is the player's archetype rather than the league, so a low-volume rim-running big is measured against other rim-running bigs instead of an average that includes pull-up guards. And the pooling constant is fitted rather than picked: splitting the season by date and asking which value best predicts the second half from the first puts it at 140 attempts. Pooling there cuts held-out error 18% overall and 28% for players under a hundred attempts, which is the whole argument, since that is exactly where a season is too short to tell a hot stretch from a shooter."
       ],
-      stack: "Python, PyMC, pandas",
-      links: [{ label: "View code", url: "https://github.com/treychase" }],
+      stack: "Python, NumPy, pandas, scikit-learn, Streamlit",
+      links: [
+        { label: "Open the dashboard", url: "projects/true-shooting-projection.html", primary: true },
+        { label: "View code", url: "https://github.com/treychase/nba-stats" }
+      ],
       files: []
     },
     {
