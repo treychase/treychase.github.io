@@ -187,6 +187,30 @@ window.SITE_DATA = {
       files: []
     },
 
+    /* ---------------- FOOTBALL ---------------- */
+    {
+      section: "football",
+      title: "NFL receiver and coverage scouting",
+      summary: "Separation, passer rating allowed, and a calibrated catch probability model over every targeted pass of the 2023 season.",
+      pinned: true,
+      year: "2026",
+      tags: ["Front office tool", "NFL Big Data Bowl 2026"],
+      status: "",
+      body: [
+        "Every targeted pass of the 2023 NFL season, 14,057 of them, measured at two moments. The first is the release: how much separation the receiver had, who was covering him, and where the defence was standing relative to where the ball was actually going. The second is the flight - the half second to two seconds while the ball is in the air. The Big Data Bowl 2026 release ships the ball's landing spot alongside the tracking, which makes that second window the only place in this kind of data where a receiver and a defender can be watched reacting to the same known destination and compared on what each did about it.",
+        "The scouting output is four tables. Separation at the throw and again on arrival, with an open rate at the three-yard threshold Next Gen Stats uses, so the numbers sit alongside the published ones. Passer rating allowed for every coverage defender. Every route type against man, against zone, and against each coverage shell. And the flight itself: acceleration, best half-second burst and total change of direction for the receiver, and for the defender how much of his angle to the ball he clawed back once it was thrown, how directly he closed on the landing spot, and how fast he shut the gap.",
+        "Catch probability is a gradient boosted model over release-time geometry, validated out of fold and grouped by game so that no play is scored by a model that had seen another snap from the same game. It reaches 0.803 AUC and a 0.156 Brier score against 0.494 and 0.213 for the league base rate, and it is calibrated to within two points in every decile - which is what makes catch rate over expected worth reading as a statement about hands rather than about the model's bias. The features stop at the release on purpose. Feeding it the receiver's distance to the ball at the moment the ball arrives would take it past 0.95 AUC and teach it nothing except that a receiver standing on the ball caught it, so the post-release columns are enumerated in code and the test suite fails the build if one reaches the feature list.",
+        "Two findings the tables keep returning to. Separation is a position statistic before it is a skill statistic - the leaderboard is running backs from top to bottom, because a back released into the flat is open by ten yards for the simple reason that nobody is covering him there. And every route type is caught more often against zone than against man, but the gap is widest on the routes that are hardest anyway: a go route is completed 39 percent of the time against man and 44 against zone, while a hitch runs 67 and 78.",
+        "The dashboard draws all 14,057 plays. Filter to a receiver, a route, a coverage or a week, and any play animates on the field with the route, both flight paths and the landing spot. The season's tracking geometry is packed into base64 typed arrays with the repeated text interned, which is what gets a season of positional data into a page that needs nothing at view time."
+      ],
+      stack: "Python, scikit-learn, pandas, NumPy, SciPy, pytest",
+      links: [
+        { label: "Open the dashboard", url: "projects/nfl-scouting.html", primary: true },
+        { label: "View code", url: "https://github.com/treychase/NFL_big_data_bowl_2026" }
+      ],
+      files: []
+    },
+
     /* ---------------- BASKETBALL ---------------- */
     {
       section: "basketball",
