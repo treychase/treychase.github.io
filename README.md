@@ -42,19 +42,23 @@ Write the summary as a sentence that stands on its own, not a truncation of the
 first paragraph — the two are never shown at the same time. An entry with no
 summary falls back to its first paragraph, and then the toggle only appears if
 there are further paragraphs behind it, so nothing is ever hidden without a way
-to open it. Articles and Blogs rows show the summary alone with no toggle,
-since the whole row is already a link. Printing ignores the toggle and prints
-every description in full.
+to open it. Writing rows show the summary alone with no toggle, since the whole
+row is already a link. Printing ignores the toggle and prints every description
+in full.
 
 Every card on the site links to something you can open — a report, a notebook,
 a dashboard or a live app. An entry with nothing to click does not earn a card;
 either give it an artifact or leave it off.
 
-Everything on the Projects, Articles and Blogs tabs comes from
-`data/projects.js`. An entry's `section` is one of `baseball`, `football`,
-`basketball`, `hockey`, `health`, `markets`, `articles` or `blogs`; the first
-six are the category squares on the Projects tab, and each is deep-linkable by
-hash, so `index.html#hockey` opens that category directly. Adding a new category means
+Everything on the Projects and Writing tabs comes from `data/projects.js`. An
+entry's `section` is one of `baseball`, `football`, `basketball`, `hockey`,
+`health`, `markets` or `writing`; the first six are the category squares on the
+Projects tab, and each is deep-linkable by hash, so `index.html#hockey` opens
+that category directly. Articles and shorter posts share the Writing tab —
+use a tag to say which one an entry is. The two older section keys `articles`
+and `blogs` still render there and still badge themselves, so nothing written
+before the merge has to be edited, and `#articles` and `#blogs` still open the
+tab. Adding a new category means
 adding it to `CATEGORIES`, `LABELS`, `EMPTY` and `SURFACES` in `index.html` and
 to `SECTIONS` in `admin.html`. The counts on the category squares are derived from it, so
 they never need updating by hand. The Resume tab is static markup in

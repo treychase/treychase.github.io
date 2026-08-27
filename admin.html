@@ -296,8 +296,16 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
   var SECTIONS = [
     ['baseball', 'Baseball'], ['football', 'Football'], ['basketball', 'Basketball'],
     ['hockey', 'Hockey'], ['health', 'Health'], ['markets', 'Markets'],
-    ['articles', 'Articles'], ['blogs', 'Blogs']
+    ['writing', 'Writing']
   ];
+  /* Articles and blogs were separate sections before they were merged into one
+     Writing tab. The site still renders those two keys there, so the rail has
+     to list them there too, or an older entry would be invisible in the editor
+     while still being live on the site. */
+  var ALIASES = { writing: ['writing', 'articles', 'blogs'] };
+  function inSection(entry, key) {
+    return (ALIASES[key] || [key]).indexOf(entry.section) >= 0;
+  }
   var DATA_PATH = 'data/projects.js';
   var HS_FALLBACK = { src: 'files/headshot.jpg', zoom: 2, x: 57.5, y: 39 };
 
@@ -545,7 +553,7 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     SECTIONS.forEach(function (s) {
       var key = s[0];
       var rows = data.map(function (e, i) { return { e: e, i: i }; })
-                     .filter(function (r) { return r.e.section === key; });
+                     .filter(function (r) { return inSection(r.e, key); });
       html += '<h2>' + s[1] + ' <span style="opacity:.5">' + rows.length + '</span></h2>';
       if (!rows.length) { html += '<p class="none">empty</p>'; return; }
       rows.forEach(function (r, n) {

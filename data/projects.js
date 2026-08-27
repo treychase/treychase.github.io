@@ -25,7 +25,7 @@
    an entry without one falls back to its first paragraph.
    {
      section: "baseball" | "football" | "basketball" | "hockey"
-              | "health" | "markets" | "articles" | "blogs",
+              | "health" | "markets" | "writing",
      title:   "Project name",
      summary: "The one line the card shows.",   // the rest opens on click
      year:    "2026",
@@ -314,9 +314,10 @@ window.SITE_DATA = {
       files: []
     }
 
-    /* ---------------- ARTICLES and BLOGS ----------------
-       Nothing here yet. Add entries with section "articles"
-       or "blogs" and they will appear on those tabs.        */
+    /* ---------------- WRITING ----------------
+       Nothing here yet. Add entries with section "writing"
+       and they will appear on that tab. Articles and shorter
+       posts share it; use a tag to say which one an entry is. */
 
   ]
 };
