@@ -44,6 +44,8 @@ select{font-family:var(--mono);font-size:13px;padding:8px 12px;border-radius:999
 .layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:20px;align-items:start}
 @media (max-width:860px){.layout{grid-template-columns:1fr}}
 .chartwrap{border:1px solid var(--line);background:var(--paper);padding:10px 10px 4px;position:relative}
+.striplabel{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin:6px 0 0 56px}
 svg{display:block;width:100%;height:auto}
 .stats{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:14px;padding-top:14px;
        border-top:1px solid var(--line-soft);font-family:var(--mono);font-size:11px;
@@ -96,10 +98,10 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     so a regime is a stretch where everything &mdash; the level's drift and the
     noise around it &mdash; is that many times larger. The chain decides which
     regime each day belongs to.
-    The blue line is the fitted level against the actual close, the red shading
-    marks where the model puts the volatile regime, and the fan is the 95 percent
-    posterior predictive interval seven trading days out &mdash; a mixture over
-    regime paths, since the chain can switch during the week.
+    The blue line is the fitted level against the actual close, the strip
+    underneath is what is left over, and the fan is the 95 percent posterior
+    predictive interval seven trading days out &mdash; a mixture over regime
+    paths, since the chain can switch during the week.
   </p>
 
   <div class="controls">
@@ -117,13 +119,14 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     <div>
       <div class="chartwrap">
         <svg id="chart" viewBox="0 0 960 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Price history with forecast interval"></svg>
+        <p class="striplabel">Actual minus fitted</p>
+        <svg id="resid" viewBox="0 0 960 90" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Residual: actual close minus fitted level"></svg>
       </div>
       <div class="legend">
         <span><i class="swatch" style="background:#1F5C43"></i> Actual close</span>
         <span><i class="swatch" style="background:#2166AC"></i> Fitted level</span>
         <span><i class="swatch band"></i> 95% interval</span>
         <span><i class="swatch" style="background:#A9741A"></i> Posterior median</span>
-        <span><i class="swatch regime"></i> Volatile regime</span>
       </div>
       <div class="stats">
         <span>Last <b id="s-last">&mdash;</b></span>
@@ -153,7 +156,15 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     <b>What this is and is not</b>
     The prices are the sample dataset bundled with the project for offline demos
     and tests, not a live market feed, and the forecasts were fit once when this
-    page was built. A local-level model says the best guess for next week is
+    page was built. That sample is generated as a constant-volatility random
+    walk &mdash; one volatility per ticker, held for the whole two years &mdash;
+    so there are no volatility regimes in it to find, and the two-state model
+    correctly does not find any: the smoothed probability of the volatile state
+    comes out flat, near the mixture weight, on every day of every ticker. That
+    is why no stretch of the chart is shaded. The same model separates a
+    genuinely turbulent stretch from a calm one when there is one to separate,
+    which the project's test suite checks against data with a known regime
+    change. A local-level model says the best guess for next week is
     roughly where the price is now, in either regime; what the two states buy is
     the <em>width</em> around that guess. A ticker sitting in the volatile regime
     today carries a wider fan than one in the calm regime, and because the chain
@@ -209,31 +220,11 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
 
     while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-    /* Regime first, so everything else sits on top of it: one band per day,
-       opacity following the smoothed probability that the day belongs to the
-       volatile state. Days the model is unsure about fade out on their own. */
-    if (regime.length === n) {
-      /* Runs, not one rect per day: adjacent rects of the same colour show a
-         seam wherever their edges land inside a device pixel, which turns a
-         shaded stretch into stripes. Probabilities are bucketed to a tenth so
-         a run can actually form. */
-      var bw = (W - L - R) / (total - 1);
-      var start = 0;
-      var bucket = function (k) { return Math.round(regime[k] * 10) / 10; };
-      for (var k = 1; k <= n; k++) {
-        if (k < n && bucket(k) === bucket(start)) continue;
-        var p = bucket(start);
-        if (p >= 0.1) {
-          svg.appendChild(el('rect', {
-            x: X(start) - bw / 2, y: T,
-            width: (X(k - 1) - X(start)) + bw, height: H - T - B,
-            fill: 'rgba(178,24,43,' + (0.2 * p).toFixed(3) + ')',
-            'shape-rendering': 'crispEdges'
-          }));
-        }
-        start = k;
-      }
-    }
+    /* No regime shading here, deliberately: see the note under the chart.
+       The bundled sample is a constant-volatility random walk, so the smoothed
+       regime probability comes out flat at whatever the mixture weight is —
+       16% every day for one ticker, 1% every day for another. Painting that
+       across the chart would draw structure the data does not have. */
 
     /* recessive grid: five horizontal rules with the price on the left */
     for (var g = 0; g <= 4; g++) {
@@ -334,6 +325,8 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
       cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); tip.style.opacity = '0';
     });
 
+    drawResiduals(hist, fitted, dates, X);
+
     var last = fan[fan.length - 1];
     document.getElementById('s-last').textContent = money(t.last);
     document.getElementById('s-fore').textContent = money(last[1]);
@@ -371,6 +364,34 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
   function band(k) {
     var t = D.tickers[k], f = t.fan[t.fan.length - 1];
     return (f[2] - f[0]) / t.last * 100;
+  }
+
+  /* The fitted level sits almost on top of the close — RMSE lands near two
+     hundredths of a percent — so the overlay alone cannot show where the two
+     part company. This strip plots the difference against a zero rule, which
+     is where a local-level fit is actually worth looking. */
+  function drawResiduals(hist, fitted, dates, X) {
+    var rs = document.getElementById('resid');
+    while (rs.firstChild) rs.removeChild(rs.firstChild);
+    if (fitted.length !== hist.length) return;
+    var RH = 90, RT = 10, RB = 14;
+    var diff = hist.map(function (v, i) { return v - fitted[i]; });
+    var mx = Math.max.apply(null, diff.map(Math.abs)) || 1;
+    var RY = function (v) { return RT + (RH - RT - RB) * (1 - (v + mx) / (2 * mx)); };
+
+    rs.appendChild(el('line', {x1: L, y1: RY(0), x2: W - R, y2: RY(0),
+      stroke: 'rgba(20,32,27,.28)', 'stroke-width': 1}));
+    var d = '';
+    diff.forEach(function (v, i) { d += (i ? ' L ' : 'M ') + X(i) + ' ' + RY(v); });
+    rs.appendChild(el('path', {d: d, fill: 'none', stroke: '#2166AC',
+      'stroke-width': 1.4, 'stroke-linejoin': 'round'}));
+    [[mx, RT + 9], [-mx, RH - RB - 1]].forEach(function (p) {
+      var txt = el('text', {x: L - 8, y: p[1], 'text-anchor': 'end',
+        'font-family': 'ui-monospace,SFMono-Regular,Menlo,monospace',
+        'font-size': 9, fill: '#4B5A52'});
+      txt.textContent = (p[0] >= 0 ? '+' : '\u2212') + '$' + Math.abs(p[0]).toFixed(2);
+      rs.appendChild(txt);
+    });
   }
 
   function movers() {
