@@ -1,19 +1,21 @@
 """Build the stock forecast dashboard from the Bayesian time-series project.
 
-Fits the project's own local-level DLM to every ticker in its bundled sample
-price file and writes a single self-contained HTML page: price history with the
-one-week posterior-predictive fan for whichever ticker you pick, plus the
-projected top and bottom movers.
+Fits the project's two-state Markov-switching DLM — a hidden Markov model with
+a local-level DLM in each regime — to every ticker in its bundled sample price
+file, and writes a single self-contained HTML page: the price history with the
+fitted level over it, the regime the model thinks each period was in, and the
+seven-day posterior-predictive fan, plus the projected top and bottom movers.
 
     python tools/build_stock_dashboard.py \
         --repo <stock time series repo> \
         --out projects/stock-forecast-dashboard.html
 
-The model is the project's, imported rather than reimplemented: each horizon is
-a separate call to `predict_interval` with the same seed, so day 1 through day 5
-come from the same posterior draws and the band widens the way the model says
-it does. Fitting a hundred tickers takes a few minutes, so the forecasts are
-cached in JSON next to the output and reused unless --refit is passed.
+The model is the project's, imported rather than reimplemented: one call to
+`predict_fan` per ticker returns every horizon from one day to seven out of a
+single posterior, along with the fitted level and the smoothed probability of
+the volatile regime at each point in the history. Fitting a hundred tickers
+takes several minutes, so the results are cached in JSON next to the output and
+reused unless --refit is passed.
 """
 
 from __future__ import annotations
@@ -26,13 +28,14 @@ from pathlib import Path
 import pandas as pd
 
 HISTORY_DAYS = 252     # one trading year on the chart
-HORIZON = 5            # trading days: one week
+HORIZON = 7            # trading days of forecast
 LEVEL = 0.95
+N_ITER, BURN_IN = 1000, 300
 
 
 def fit(repo: Path, horizon: int, level: float) -> dict:
     sys.path.insert(0, str(repo / "src"))
-    from stockts.bayesian import predict_interval  # noqa: E402
+    from stockts.hmm import predict_fan  # noqa: E402
 
     prices = pd.read_csv(repo / "data" / "sample_prices.csv", index_col=0, parse_dates=True)
     out = {"asOf": str(prices.index[-1].date()), "horizon": horizon, "level": level,
@@ -44,18 +47,28 @@ def fit(repo: Path, horizon: int, level: float) -> dict:
         if series.size < 30 or (series <= 0).any():
             continue
         arr = series.to_numpy()
-        fan = []
-        for h in range(1, horizon + 1):
-            # same seed every step: one posterior, propagated further each time
-            pi = predict_interval(arr, horizon=h, level=level, seed=610)
-            fan.append([round(pi.lower, 2), round(pi.point, 2), round(pi.upper, 2)])
+        f = predict_fan(arr, horizon=horizon, level=level,
+                        n_iter=N_ITER, burn_in=BURN_IN, seed=610)
         out["tickers"][ticker] = {
             "history": [round(float(v), 2) for v in arr[-HISTORY_DAYS:]],
-            "fan": fan,
+            # the fitted level and the regime probability are per-observation,
+            # so they are windowed to the same span as the history
+            "fitted": [round(v, 2) for v in f.fitted[-HISTORY_DAYS:]],
+            "regime": [round(v, 3) for v in f.state_prob[-HISTORY_DAYS:]],
+            "fan": [[round(lo, 2), round(pt, 2), round(up, 2)]
+                    for lo, pt, up in zip(f.lower, f.point, f.upper)],
             "last": round(float(arr[-1]), 2),
-            "ret": round(float(fan[-1][1] / arr[-1] - 1) * 100, 2),
+            "ret": round(float(f.expected_return) * 100, 2),
+            "rmse": round(f.rmse, 2),
+            "pVol": round(f.p_volatile_now, 3),
+            # daily sd of the level step, per regime, as a percentage
+            "vol": [round(v * 100, 2) for v in f.vol_daily],
+            "persist": [round(v, 3) for v in f.persistence],
         }
-        print(f"  [{n:3d}] {ticker:6s} {out['tickers'][ticker]['ret']:+.2f}%", flush=True)
+        t = out["tickers"][ticker]
+        print(f"  [{n:3d}] {ticker:6s} {t['ret']:+.2f}%  "
+              f"P(vol)={t['pVol']:.2f}  vol={t['vol'][0]:.2f}/{t['vol'][1]:.2f}%",
+              flush=True)
     return out
 
 
@@ -80,7 +93,8 @@ def main() -> None:
     args.out.write_text(html.replace('"__DATA__"', json.dumps(payload, separators=(",", ":"))),
                         encoding="utf-8")
     print(f"{args.out}: {args.out.stat().st_size / 1024:.0f} KB, "
-          f"{len(payload['tickers'])} tickers, as of {payload['asOf']}")
+          f"{len(payload['tickers'])} tickers, {payload['horizon']}-day horizon, "
+          f"as of {payload['asOf']}")
 
 
 if __name__ == "__main__":

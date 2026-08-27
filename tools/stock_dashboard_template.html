@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Stock Forecasts &middot; Trey Chase</title>
-<meta name="description" content="A Bayesian local-level model forecasting the next trading week for a universe of stocks, with the posterior predictive interval drawn on the price history.">
+<meta name="description" content="A two-state hidden Markov model with a DLM in each regime, forecasting the next trading week for a universe of stocks, with the fitted level and the posterior predictive fan drawn on the price history.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
 <style>
 :root{
@@ -55,6 +55,7 @@ svg{display:block;width:100%;height:auto}
 .legend span{display:inline-flex;align-items:center;gap:8px}
 .swatch{width:14px;height:3px;border-radius:2px;display:inline-block}
 .swatch.band{height:11px;border-radius:2px;background:rgba(223,162,44,.3);border:1px solid rgba(169,116,26,.5)}
+.swatch.regime{height:11px;border-radius:2px;background:rgba(178,24,43,.16);border:1px solid rgba(178,24,43,.35)}
 .movers h2{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
            color:var(--field);margin:0 0 8px;font-weight:700}
 .movers table{border-collapse:collapse;width:100%;margin-bottom:18px}
@@ -89,11 +90,14 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
   <p class="sub" id="sub">Bayesian local-level model</p>
 
   <p class="intro">
-    A local-level dynamic linear model, fit by Gibbs sampler on log prices, run
-    across a universe of stocks. For each one it returns not a number but a
-    distribution: the posterior predictive price five trading days out. The
-    shaded fan is the 95 percent credible interval, and it widens with the
-    horizon because a random walk five days ahead is less certain than one day.
+    A hidden Markov model with two states and a local-level dynamic linear model
+    in each of them, fit by Gibbs sampler on log prices. One regime is calm and
+    one is volatile; the chain decides which one each day belongs to, and the
+    two DLMs differ in how far the price level is allowed to move underneath.
+    The blue line is the fitted level against the actual close, the red shading
+    marks where the model puts the volatile regime, and the fan is the 95 percent
+    posterior predictive interval seven trading days out &mdash; a mixture over
+    regime paths, since the chain can switch during the week.
   </p>
 
   <div class="controls">
@@ -113,9 +117,11 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
         <svg id="chart" viewBox="0 0 960 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Price history with forecast interval"></svg>
       </div>
       <div class="legend">
-        <span><i class="swatch" style="background:#1F5C43"></i> Close</span>
-        <span><i class="swatch band"></i> 95% credible interval</span>
+        <span><i class="swatch" style="background:#1F5C43"></i> Actual close</span>
+        <span><i class="swatch" style="background:#2166AC"></i> Fitted level</span>
+        <span><i class="swatch band"></i> 95% interval</span>
         <span><i class="swatch" style="background:#A9741A"></i> Posterior median</span>
+        <span><i class="swatch regime"></i> Volatile regime</span>
       </div>
       <div class="stats">
         <span>Last <b id="s-last">&mdash;</b></span>
@@ -123,6 +129,10 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
         <span>95% interval <b id="s-int">&mdash;</b></span>
         <span>Expected <b id="s-ret">&mdash;</b></span>
         <span>Interval width <b id="s-band">&mdash;</b></span>
+        <span>Fit RMSE <b id="s-rmse">&mdash;</b></span>
+        <span>Regime now <b id="s-regime">&mdash;</b></span>
+        <span>Daily level move <b id="s-vol">&mdash;</b></span>
+        <span>Regime persistence <b id="s-persist">&mdash;</b></span>
       </div>
     </div>
 
@@ -141,13 +151,13 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     The prices are the sample dataset bundled with the project for offline demos
     and tests, not a live market feed, and the forecasts were fit once when this
     page was built. A local-level model says the best guess for next week is
-    roughly where the price is now; what it is actually good for is the width of
-    the interval around that, which is why the fan matters more here than the
-    line down its middle. The projected movers make that concrete: across the
-    whole universe the expected one-week returns span a few hundredths of a
-    percent, while the 95 percent interval runs to about a sixth of the price.
-    The ranking is noise; the interval is the answer. Nothing here is
-    investment advice.
+    roughly where the price is now, in either regime; what the two states buy is
+    the <em>width</em> around that guess. A ticker sitting in the volatile regime
+    today carries a wider fan than one in the calm regime, and because the chain
+    can switch during the week the interval is a mixture over regime paths rather
+    than one Gaussian. That is why the fan matters more here than the line down
+    its middle, and why the ranking of expected returns is close to noise while
+    the interval is not. Nothing here is investment advice.
   </div>
 </main>
 
@@ -182,9 +192,12 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     var span = Math.min(range, t.history.length);
     var from = t.history.length - span;
     var hist = t.history.slice(from), dates = D.dates.slice(from);
+    var fitted = (t.fitted || []).slice(from), regime = (t.regime || []).slice(from);
     var fan = t.fan, n = hist.length, total = n + fan.length;
-    var lo = Math.min.apply(null, hist.concat(fan.map(function (f) { return f[0]; })));
-    var hi = Math.max.apply(null, hist.concat(fan.map(function (f) { return f[2]; })));
+    var all = hist.concat(fitted, fan.map(function (f) { return f[0]; }),
+                          fan.map(function (f) { return f[2]; }));
+    var lo = Math.min.apply(null, all);
+    var hi = Math.max.apply(null, all);
     var padv = (hi - lo) * 0.08 || 1;
     lo -= padv; hi += padv;
 
@@ -192,6 +205,32 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     var Y = function (v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); };
 
     while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    /* Regime first, so everything else sits on top of it: one band per day,
+       opacity following the smoothed probability that the day belongs to the
+       volatile state. Days the model is unsure about fade out on their own. */
+    if (regime.length === n) {
+      /* Runs, not one rect per day: adjacent rects of the same colour show a
+         seam wherever their edges land inside a device pixel, which turns a
+         shaded stretch into stripes. Probabilities are bucketed to a tenth so
+         a run can actually form. */
+      var bw = (W - L - R) / (total - 1);
+      var start = 0;
+      var bucket = function (k) { return Math.round(regime[k] * 10) / 10; };
+      for (var k = 1; k <= n; k++) {
+        if (k < n && bucket(k) === bucket(start)) continue;
+        var p = bucket(start);
+        if (p >= 0.1) {
+          svg.appendChild(el('rect', {
+            x: X(start) - bw / 2, y: T,
+            width: (X(k - 1) - X(start)) + bw, height: H - T - B,
+            fill: 'rgba(178,24,43,' + (0.2 * p).toFixed(3) + ')',
+            'shape-rendering': 'crispEdges'
+          }));
+        }
+        start = k;
+      }
+    }
 
     /* recessive grid: five horizontal rules with the price on the left */
     for (var g = 0; g <= 4; g++) {
@@ -220,7 +259,15 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     svg.appendChild(el('path', {d: med, fill: 'none', stroke: '#A9741A',
       'stroke-width': 2, 'stroke-dasharray': '5 4', 'stroke-linecap': 'round'}));
 
-    /* history */
+    /* the model's fitted level, under the actual so the actual stays readable */
+    if (fitted.length === n) {
+      var fd = '';
+      fitted.forEach(function (v, i) { fd += (i ? ' L ' : 'M ') + X(i) + ' ' + Y(v); });
+      svg.appendChild(el('path', {d: fd, fill: 'none', stroke: '#2166AC',
+        'stroke-width': 1.6, 'stroke-dasharray': '4 3', 'stroke-linejoin': 'round'}));
+    }
+
+    /* actual close */
     var d = '';
     hist.forEach(function (v, i) { d += (i ? ' L ' : 'M ') + X(i) + ' ' + Y(v); });
     svg.appendChild(el('path', {d: d, fill: 'none', stroke: '#1F5C43',
@@ -262,7 +309,12 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
       var i = Math.round((px - L) / (W - L - R) * (total - 1));
       i = Math.max(0, Math.min(total - 1, i));
       var label, value;
-      if (i < n) { value = hist[i]; label = dates[i] + ' — ' + money(value); }
+      if (i < n) {
+        value = hist[i];
+        label = dates[i] + ' — ' + money(value);
+        if (fitted.length === n) label += '  (fitted ' + money(fitted[i]) + ')';
+        if (regime.length === n) label += '  P(volatile) ' + regime[i].toFixed(2);
+      }
       else {
         var f = fan[i - n];
         value = f[1];
@@ -288,8 +340,22 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     r.className = t.ret >= 0 ? 'up' : 'down';
     document.getElementById('s-band').textContent =
       '\u00b1' + (band(cur) / 2).toFixed(1) + '% of price';
+    document.getElementById('s-rmse').textContent =
+      t.rmse === undefined ? '\u2014' : '$' + t.rmse.toFixed(2);
+    var pv = document.getElementById('s-regime');
+    if (t.pVol === undefined) { pv.textContent = '\u2014'; pv.className = ''; }
+    else {
+      pv.textContent = (t.pVol >= 0.5 ? 'Volatile' : 'Calm')
+        + ' · P ' + (t.pVol >= 0.5 ? t.pVol : 1 - t.pVol).toFixed(2);
+      pv.className = t.pVol >= 0.5 ? 'down' : 'up';
+    }
+    document.getElementById('s-vol').textContent =
+      t.vol ? t.vol[0].toFixed(2) + '% calm / ' + t.vol[1].toFixed(2) + '% volatile' : '\u2014';
+    document.getElementById('s-persist').textContent =
+      t.persist ? t.persist[0].toFixed(2) + ' / ' + t.persist[1].toFixed(2) : '\u2014';
     document.getElementById('sub').textContent =
-      cur + ' · ' + dates[0] + ' to ' + dates[n - 1] + ' · ' + fan.length + ' trading days ahead';
+      cur + ' · ' + dates[0] + ' to ' + dates[n - 1] + ' · ' + fan.length
+      + ' trading days ahead · two-state HMM';
 
     Array.prototype.forEach.call(document.querySelectorAll('.movers tr'), function (tr) {
       tr.classList.toggle('on', tr.dataset.t === cur);
