@@ -167,7 +167,7 @@ the note under *Publishing a rendered Quarto document* below.
 
 ## The hosted dashboards
 
-Five files in `projects/` are not write-ups but the dashboards themselves,
+Six files in `projects/` are not write-ups but the dashboards themselves,
 each a single self-contained page, so a project card can link to something that
 loads immediately rather than waiting on a Space to wake up:
 
@@ -178,6 +178,7 @@ loads immediately rather than waiting on a Space to wake up:
 | `projects/skater-tracking-dashboard.html` | `tools/` in this repo, from the player-tracking analysis repo | `python tools/build_skater_dashboard.py --games-dir <that repo>/games` |
 | `projects/run-value-matrix.html` | `tools/` in this repo, from the run values repo | `python tools/build_run_values_page.py --rds <that repo>/master_run_values.rds` |
 | `projects/stock-forecast-dashboard.html` | `tools/` in this repo, from the Bayesian time-series repo | `python tools/build_stock_dashboard.py --repo <that repo>` |
+| `projects/nba-scouting.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_nba_scouting_page.py --repo <that repo>` |
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
@@ -195,7 +196,14 @@ whenever that repo is the one being edited.
 
 `build_run_values_page.py` works the same way for the run value matrix, reading
 `master_run_values.rds` and writing it into `run_values_template.html` as a
-diverging heatmap. `build_stock_dashboard.py` is the third of the pair
+diverging heatmap. `build_nba_scouting_page.py` is the same shape again: it
+imports the nba-stats repo's own clustering rather than reimplementing it, bins
+every shot in that repo's shot chart pull onto one hex lattice shared by all
+582 players — which is what keeps the whole league inside 600 KB — and writes
+the result into `nba_scouting_template.html`. It is the one page here that
+fetches anything at view time: headshots come straight from the NBA's CDN by
+player id, stacked over an inline monogram so a player the CDN has no portrait
+for still gets a card. `build_stock_dashboard.py` is the third of the pair
 kind: it imports the forecasting project's own model rather than reimplementing
 it, fits every ticker in that project's bundled offline sample, and writes the
 history, the fitted level, the regime probabilities and the seven-day fan into

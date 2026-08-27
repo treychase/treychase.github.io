@@ -190,6 +190,26 @@ window.SITE_DATA = {
     /* ---------------- BASKETBALL ---------------- */
     {
       section: "basketball",
+      title: "NBA scouting dashboard",
+      summary: "Pick a team and a player: shot chart, shooting and touch percentiles, and the archetype they cluster into.",
+      pinned: true,
+      year: "2026",
+      tags: ["Tracking data", "Front office tool"],
+      status: "",
+      body: [
+        "A scouting page over the league's tracking and shot chart pulls for 2025-26. Pick a team, pick a player, and get their shot chart with hex size carrying volume and hex colour carrying their field goal percentage against the league's from that same spot, so a chart says where a player is actually better than the shot is rather than only where he takes it. Alongside it, rim, mid-range, three-point and effective field goal percentages, and the share of his touches taken in the paint, the post and at the elbow, each ranked against everyone who clears that row's attempt or touch floor.",
+        "The archetype is the part that is not a box score. Position labels stopped describing how NBA players are used a while ago, so every player is clustered on what he actually does with the ball across eighteen tracking features, all taken as per-36 rates so the clustering finds roles rather than rediscovering the minutes rotation. The number of clusters comes off the silhouette score instead of being picked by hand, and each cluster is named by matching its centre against prototype weight vectors; a cluster defined only by what its players do not do is called a low-usage role player rather than borrowing a name it has not earned. Players under 250 minutes are left unclustered, because rate stats on that few minutes would move the cluster centres more than they would describe the player.",
+        "This season it settles on five archetypes over the 437 players who qualify, and the neighbourhoods hold up: Jokic, Sengun, Embiid and Wembanyama land together as post hubs, Gobert and Holmgren as rim-running bigs, Gilgeous-Alexander next to Booker, Edwards and Mitchell. Every player also gets his six closest neighbours in the same feature space, which reads as used the same way rather than scores the same amount, and each one is clickable."
+      ],
+      stack: "Python, scikit-learn, pandas, Streamlit",
+      links: [
+        { label: "Open the dashboard", url: "projects/nba-scouting.html", primary: true },
+        { label: "View code", url: "https://github.com/treychase/nba-stats" }
+      ],
+      files: []
+    },
+    {
+      section: "basketball",
       title: "True shooting projection, Bayesian AR",
       summary: "What a player is likely to shoot next season, which is not the same question as what he shot last season.",
       year: "2026",
