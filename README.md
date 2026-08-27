@@ -198,7 +198,10 @@ whenever that repo is the one being edited.
 diverging heatmap. `build_stock_dashboard.py` is the third of the pair
 kind: it imports the forecasting project's own model rather than reimplementing
 it, fits every ticker in that project's bundled offline sample, and writes the
-history and the five-day fan into `stock_dashboard_template.html`. Fitting a
+history, the fitted level, the regime probabilities and the seven-day fan into
+`stock_dashboard_template.html`. The model is that project's two-state
+Markov-switching DLM, so one `predict_fan` call per ticker returns every
+horizon out of a single posterior. Fitting a
 hundred tickers takes a few minutes, so the fitted numbers are cached in
 `tools/.stock_forecasts.json` (gitignored) and reused until you pass `--refit`. **Output only, deliberately.** The team's dashboards and
 their code stay private; what is published is a table of run value by outcome,
