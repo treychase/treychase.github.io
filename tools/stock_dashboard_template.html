@@ -91,9 +91,11 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
 
   <p class="intro">
     A hidden Markov model with two states and a local-level dynamic linear model
-    in each of them, fit by Gibbs sampler on log prices. One regime is calm and
-    one is volatile; the chain decides which one each day belongs to, and the
-    two DLMs differ in how far the price level is allowed to move underneath.
+    in each of them, fit by Gibbs sampler on log prices. Both states are complete
+    DLMs; the volatile one's variances are a common multiple of the calm one's,
+    so a regime is a stretch where everything &mdash; the level's drift and the
+    noise around it &mdash; is that many times larger. The chain decides which
+    regime each day belongs to.
     The blue line is the fitted level against the actual close, the red shading
     marks where the model puts the volatile regime, and the fan is the 95 percent
     posterior predictive interval seven trading days out &mdash; a mixture over
@@ -132,6 +134,7 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
         <span>Fit RMSE <b id="s-rmse">&mdash;</b></span>
         <span>Regime now <b id="s-regime">&mdash;</b></span>
         <span>Daily level move <b id="s-vol">&mdash;</b></span>
+        <span>Volatile scale <b id="s-kappa">&mdash;</b></span>
         <span>Regime persistence <b id="s-persist">&mdash;</b></span>
       </div>
     </div>
@@ -353,6 +356,8 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
       t.vol ? t.vol[0].toFixed(2) + '% calm / ' + t.vol[1].toFixed(2) + '% volatile' : '\u2014';
     document.getElementById('s-persist').textContent =
       t.persist ? t.persist[0].toFixed(2) + ' / ' + t.persist[1].toFixed(2) : '\u2014';
+    document.getElementById('s-kappa').textContent =
+      t.kappa === undefined ? '\u2014' : t.kappa.toFixed(2) + '\u00d7 the calm regime';
     document.getElementById('sub').textContent =
       cur + ' · ' + dates[0] + ' to ' + dates[n - 1] + ' · ' + fan.length
       + ' trading days ahead · two-state HMM';

@@ -64,6 +64,7 @@ def fit(repo: Path, horizon: int, level: float) -> dict:
             # daily sd of the level step, per regime, as a percentage
             "vol": [round(v * 100, 2) for v in f.vol_daily],
             "persist": [round(v, 3) for v in f.persistence],
+            "kappa": round(f.kappa, 2),
         }
         t = out["tickers"][ticker]
         print(f"  [{n:3d}] {ticker:6s} {t['ret']:+.2f}%  "
