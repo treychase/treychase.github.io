@@ -226,26 +226,97 @@ function select(i) {
     " · " + titleCase(str(P.route[i])) + " vs " + titleCase(str(P.covType[i])) +
     (str(P.cov[i]) ? " · covered by " + str(P.cov[i]) + " (" + str(P.covPos[i]) + ")" : "");
 
-  var stats = [
-    ["Separation at throw", fmt(P.sep[i], 1) + " yd"],
-    ["Separation on arrival", fmt(P.sepArr[i], 1) + " yd"],
-    ["Air yards", fmt(P.airYds[i], 1)],
-    ["Time in the air", fmt(P.airTime[i], 1) + " s"],
-    ["Catch probability", pct(P.cp[i], 0)],
-    ["Over expected", signed(P.coe[i], 2)],
-    ["Receiver turn in flight", fmt(P.recCod[i], 0) + "°"],
-    ["Receiver burst", fmt(P.recBurst[i], 1) + " yd/s²"],
-    ["Defender turn in flight", fmt(P.covCod[i], 0) + "°"],
-    ["Defender redirect", signed(P.covCorr[i], 0) + "°"],
-    ["Defender pursuit", fmt(P.covEff[i], 2)],
-    ["Closing speed", fmt(P.covClose[i], 1) + " yd/s"]
-  ];
-  $("playStats").innerHTML = stats.map(function (s) {
-    return '<div><span class="k">' + s[0] + '</span><span class="v">' + s[1] + "</span></div>";
-  }).join("");
+  $("playStats").innerHTML = renderStatGroups(i);
 
   $("playNote").textContent = describe(i);
   loadGeometry(i);
+}
+
+/* ---------- play metrics, against the season ---------------------------- */
+/* A number on its own says very little: 62 degrees of turn in the air is a
+   lot or a little only against the other fourteen thousand targets. So each
+   metric carries its percentile among every play that has one, shaded on the
+   page's diverging ramp, and the metrics are grouped by whose they are - the
+   throw, the receiver, the defender - in the colours those players are drawn
+   in on the field above.
+   
+   The chip says where the number sits, not whether it is good. Which
+   direction is good depends on who you are scouting: a defender's closing
+   speed and a receiver's separation are both high-is-good, and both sit in
+   the same play. Colouring by "good" would need the page to pick a side. */
+
+var STAT_GROUPS = [
+  ["The throw", "", [
+    ["Air yards", "airYds", function (v) { return fmt(v, 1); }],
+    ["Time in the air", "airTime", function (v) { return fmt(v, 1) + " s"; }],
+    ["Catch probability", "cp", function (v) { return pct(v, 0); }],
+    ["Over expected", "coe", function (v) { return signed(v, 2); }]
+  ]],
+  ["The receiver", "recv", [
+    ["Separation at throw", "sep", function (v) { return fmt(v, 1) + " yd"; }],
+    ["Separation on arrival", "sepArr", function (v) { return fmt(v, 1) + " yd"; }],
+    ["Turn in flight", "recCod", function (v) { return fmt(v, 0) + "\u00B0"; }],
+    ["Burst", "recBurst", function (v) { return fmt(v, 1) + " yd/s\u00B2"; }]
+  ]],
+  ["The defender", "cov", [
+    ["Turn in flight", "covCod", function (v) { return fmt(v, 0) + "\u00B0"; }],
+    ["Redirect to the ball", "covCorr", function (v) { return signed(v, 0) + "\u00B0"; }],
+    ["Pursuit", "covEff", function (v) { return fmt(v, 2); }],
+    ["Closing speed", "covClose", function (v) { return fmt(v, 1) + " yd/s"; }]
+  ]]
+];
+
+/* Sorted copies, built once per metric on first use rather than all twelve up
+   front: a viewer who never opens the play explorer never pays for them. */
+var SORTED = {};
+function sortedValues(key) {
+  if (!SORTED[key]) {
+    var out = [];
+    for (var k = 0; k < P.n; k++) {
+      var v = P[key][k];
+      if (isFinite(v)) out.push(v);
+    }
+    out.sort(function (a, b) { return a - b; });
+    SORTED[key] = out;
+  }
+  return SORTED[key];
+}
+
+/* Share of plays at or below this value, 0-100. Ties land at the midpoint of
+   their own run, so a metric where a third of the league sits on one value
+   does not report that third as the 99th percentile. */
+function metricPercentile(key, value) {
+  if (!isFinite(value)) return null;
+  var a = sortedValues(key);
+  if (!a.length) return null;
+  var lo = 0, hi = a.length;
+  while (lo < hi) { var m = (lo + hi) >> 1; if (a[m] < value) lo = m + 1; else hi = m; }
+  var first = lo;
+  hi = a.length;
+  while (lo < hi) { var m2 = (lo + hi) >> 1; if (a[m2] <= value) lo = m2 + 1; else hi = m2; }
+  return (first + lo) / 2 / a.length * 100;
+}
+
+function renderStatGroups(i) {
+  return STAT_GROUPS.map(function (group) {
+    var swatch = group[1]
+      ? '<i style="background:var(--' + group[1] + ')"></i>'
+      : '<i style="background:var(--other)"></i>';
+    var cells = group[2].map(function (stat) {
+      var value = P[stat[1]][i];
+      var shown = isFinite(value) ? stat[2](value) : "\u2013";
+      var p = metricPercentile(stat[1], value);
+      var chip = p === null
+        ? '<span class="p na">no rank</span>'
+        : '<span class="p" style="background:' + ramp(p / 100) + ";color:" +
+          textOnRamp(p / 100) + '">' + Math.round(p) + '</span>';
+      return '<div class="stat' + (group[1] ? " " + group[1] : "") + '">' +
+        '<span class="k">' + stat[0] + "</span>" +
+        '<span class="vrow"><span class="v">' + shown + "</span>" + chip + "</span></div>";
+    }).join("");
+    return '<div class="sgroup"><h4>' + swatch + group[0] + "</h4>" +
+           '<div class="grid4">' + cells + "</div></div>";
+  }).join("");
 }
 
 function describe(i) {
@@ -284,6 +355,12 @@ function describe(i) {
 }
 
 /* ---------- the field ------------------------------------------------- */
+
+/* Tracking coordinates run 0-120 along the field and 0-53.3 across it, so
+   the playing field is the 100 yards between x = 10 and x = 110 and the ten
+   yards outside each goal line are end zone. */
+var FIELD_LENGTH = 120, FIELD_WIDTH = 53.3;
+var GOAL_NEAR = 10, GOAL_FAR = 110;
 
 var geo = null, frame = 0, timer = null;
 
@@ -373,20 +450,80 @@ function drawField() {
   g.fillStyle = cssVar("--field");
   g.fillRect(0, 0, W, H);
 
-  /* Yard lines every five, numbers every ten. */
+  /* The end zones, drawn before anything else so the lines land on top.
+     Tracking coordinates run 0-120 along the field: the goal lines are at
+     10 and 110, and the ten yards beyond each are end zone. The view
+     usually sits in midfield and never sees them, but a red zone target
+     is exactly the play where knowing where the back line is matters. */
+  g.fillStyle = cssVar("--field-deep");
+  [[0, GOAL_NEAR], [GOAL_FAR, FIELD_LENGTH]].forEach(function (zone) {
+    if (zone[1] < x0 || zone[0] > x1) return;
+    var a = px(zone[0]), b = px(zone[1]);
+    g.fillRect(Math.min(a, b), 0, Math.abs(b - a), H);
+  });
+
+  /* Yard lines every five, numbers every ten. Both are clipped to the field
+     of play: an end zone carries no five yard lines, and the goal line
+     itself is unnumbered rather than a "0". */
   g.strokeStyle = "rgba(236,239,230,.20)";
   g.fillStyle = "rgba(236,239,230,.45)";
   g.font = "600 11px " + cssVar("--mono");
   g.textAlign = "center";
   for (var yd = Math.ceil(x0 / 5) * 5; yd <= x1; yd += 5) {
+    if (yd < GOAL_NEAR || yd > GOAL_FAR) continue;
     var X = px(yd);
     g.lineWidth = (yd % 10 === 0) ? 1.4 : 0.7;
     g.beginPath(); g.moveTo(X, 0); g.lineTo(X, H); g.stroke();
-    if (yd % 10 === 0 && yd >= 10 && yd <= 110) {
-      var number = yd <= 60 ? yd - 10 : 110 - yd;
+    if (yd % 10 === 0 && yd > GOAL_NEAR && yd < GOAL_FAR) {
+      var number = yd <= 60 ? yd - GOAL_NEAR : GOAL_FAR - yd;
       g.fillText(String(number), X, H - 8);
     }
   }
+
+  /* Goal lines and the back of each end zone. The goal line is the one
+     line on the field a defence is actually defending, so it is drawn
+     brighter and heavier than the yard lines it sits among. */
+  [GOAL_NEAR, GOAL_FAR].forEach(function (line) {
+    if (line < x0 || line > x1) return;
+    g.strokeStyle = "rgba(236,239,230,.85)";
+    g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(px(line), 0); g.lineTo(px(line), H); g.stroke();
+  });
+  [0, FIELD_LENGTH].forEach(function (line) {
+    if (line < x0 || line > x1) return;
+    g.strokeStyle = "rgba(236,239,230,.55)";
+    g.lineWidth = 1.8;
+    g.beginPath(); g.moveTo(px(line), 0); g.lineTo(px(line), H); g.stroke();
+  });
+
+  /* END ZONE across each one, but only when enough of it is on screen for
+     the word to sit inside its own paint rather than run out over a goal
+     line. */
+  [[0, GOAL_NEAR], [GOAL_FAR, FIELD_LENGTH]].forEach(function (zone) {
+    var a = px(zone[0]), b = px(zone[1]);
+    var left = Math.min(a, b), width = Math.abs(b - a);
+    var visible = Math.min(left + width, W) - Math.max(left, 0);
+    if (visible < 74) return;
+    g.save();
+    g.translate((Math.max(left, 0) + Math.min(left + width, W)) / 2, H / 2);
+    g.rotate(-Math.PI / 2);
+    g.fillStyle = "rgba(236,239,230,.42)";
+    g.font = "700 13px " + cssVar("--mono");
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("END ZONE", 0, 0);
+    g.restore();
+    g.textBaseline = "alphabetic";
+  });
+
+  /* Sidelines. */
+  g.strokeStyle = "rgba(236,239,230,.30)";
+  g.lineWidth = 1.6;
+  [0, FIELD_WIDTH].forEach(function (side) {
+    if (side < y0 || side > y1) return;
+    var Y = py(side);
+    g.beginPath(); g.moveTo(0, Y); g.lineTo(W, Y); g.stroke();
+  });
   /* Hash marks at the NFL's 70'9" inbound lines. */
   g.strokeStyle = "rgba(236,239,230,.16)";
   g.lineWidth = 1;
@@ -659,15 +796,28 @@ options($("mMetric"), MEASURES.map(function (m) { return m[0]; }),
         MEASURES.map(function (m) { return m[1]; }));
 options($("mSplit"), ["manZone", "covType"], ["Man vs zone", "Coverage shell"]);
 
-/* Orange to purple through a near-neutral middle: readable for a
-   red-green colourblind reader, which red-to-green is not. */
+/* Blue to red through a near-neutral middle: readable for a red-green
+   colourblind reader, which red-to-green is not. The three stops come off
+   the CSS variables so the heat map here and the percentile chips on the
+   play explorer cannot drift apart. */
+function rgbOf(name) {
+  var hex = cssVar(name);
+  return [1, 3, 5].map(function (i) { return parseInt(hex.substr(i, 2), 16); });
+}
 function ramp(t) {
-  var a = [179, 88, 6], b = [243, 241, 236], c = [84, 39, 136];
+  t = Math.max(0, Math.min(1, t));
+  var a = rgbOf("--cold"), b = rgbOf("--mid"), c = rgbOf("--hot");
   var lo = t < 0.5 ? a : b, hi = t < 0.5 ? b : c;
   var u = t < 0.5 ? t * 2 : (t - 0.5) * 2;
   return "rgb(" + lo.map(function (v, i) {
     return Math.round(v + (hi[i] - v) * u);
   }).join(",") + ")";
+}
+/* Dark or light text, whichever survives on the ramp colour underneath. */
+function textOnRamp(t) {
+  var m = /(\d+),(\d+),(\d+)/.exec(ramp(t));
+  var l = (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255;
+  return l > 0.55 ? "#14201B" : "#ffffff";
 }
 
 function drawMatrix() {
