@@ -14,10 +14,11 @@
   --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
   --sans:"Helvetica Neue",Arial,sans-serif;
   /* Diverging pair for percentiles and for shooting against league average:
-     orange below, purple above, near-neutral in the middle. Not green against
-     red, which is the one diverging pair a red-green colourblind reader
-     cannot separate. */
-  --cold:#B35806;--hot:#542788;--mid:#F3F1EC;
+     blue below, red above, near-neutral in the middle. Not green against red,
+     which is the one diverging pair a red-green colourblind reader cannot
+     separate - blue against red also splits on lightness, so it survives both
+     common forms of colour blindness and a black and white printout. */
+  --cold:#2166AC;--hot:#B2182B;--mid:#F3F1EC;
   --team:#1F5C43;
 }
 *{box-sizing:border-box}
@@ -124,6 +125,20 @@ hr.sep{border:0;border-top:1px solid var(--line);margin:34px 0 26px}
           color:var(--muted);margin-bottom:8px}
 .arch ul{margin:0;padding-left:16px;font-size:12.5px;line-height:1.55;color:var(--muted)}
 .arch.on{border-color:var(--team);background:var(--paper);box-shadow:inset 0 0 0 1px var(--team)}
+/* The star tier is the only chip that gets to shout, so it carries the hot end
+   of the same diverging pair the percentiles use rather than a new colour. */
+.chip.tier{background:transparent;color:var(--muted);border:1px solid var(--line);margin-left:8px}
+.chip.tier.star{background:var(--hot);color:#fff;border-color:var(--hot)}
+.tier-grid{display:grid;gap:10px}
+.tcard{border:1px solid var(--line);border-radius:4px;padding:11px 14px;background:var(--panel);
+       display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;align-items:baseline}
+.tcard.on{border-color:var(--team);background:var(--paper);box-shadow:inset 0 0 0 1px var(--team)}
+.tcard .tn{font-weight:700;font-size:14.5px}
+.tcard .tc{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+           color:var(--muted);text-align:right}
+.tcard .td{grid-column:1/-1;font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--muted)}
+.tcard.star .tn{color:var(--hot)}
+td.txt{font-size:12.5px;color:var(--muted)}
 footer{
   border-top:1px solid var(--line);margin-top:44px;padding:24px 22px 40px;
   font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
@@ -146,9 +161,13 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
   <p class="intro">
     Pick a team and a player. The shot chart shows where they shoot from and how
     they do against the league from the same spots; the profiles rank them on
-    shooting and on where they touch the ball. The archetype is not a position
-    &mdash; it comes from clustering every player on what they actually do with
-    the ball, so a player is grouped with the players used the way they are used.
+    shooting, on where they touch the ball, and on what they are worth per
+    possession and in wins. Two clusterings sit underneath, on opposite axes.
+    The archetype is not a position &mdash; it comes from clustering every player
+    on what they actually do with the ball, so a player is grouped with the
+    players used the way they are used. The tier is not a role &mdash; it comes
+    from clustering on impact and load, so <em>star</em> is where the league
+    separates rather than a number somebody picked.
   </p>
 
   <div class="controls">
@@ -163,7 +182,7 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
     <div class="who-block">
       <div class="nm" id="pname">&mdash;</div>
       <div class="tm" id="pteam"></div>
-      <span class="chip" id="parch"></span>
+      <span class="chip" id="parch"></span><span class="chip tier" id="ptier"></span>
     </div>
     <div class="stats" id="pstats"></div>
   </div>
@@ -199,6 +218,73 @@ footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
         the elbow overlaps the top of the paint.
       </p>
     </div>
+  </div>
+
+  <hr class="sep">
+
+  <div class="cols">
+    <div class="panel">
+      <h2>Impact</h2>
+      <table id="impact"><thead><tr>
+        <th>Metric</th><th style="text-align:right">Value</th>
+        <th>What it means</th><th style="text-align:right">%ile</th>
+      </tr></thead><tbody></tbody></table>
+
+      <h2 style="margin-top:26px">Where the points come from</h2>
+      <div class="bars" id="halves"></div>
+      <p class="caption" id="impactcap"></p>
+    </div>
+
+    <div class="panel">
+      <h2>The tiers</h2>
+      <div class="tier-grid" id="tiergrid"></div>
+      <p class="caption" id="tiercap"></p>
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <h2>The star tier</h2>
+  <table id="starboard"><thead><tr>
+    <th>Player</th><th>Team</th>
+    <th style="text-align:right">Box +/-</th><th style="text-align:right">WS/48</th>
+    <th style="text-align:right">Win shares</th><th style="text-align:right">Pts/g</th>
+    <th style="text-align:right">Min/g</th>
+  </tr></thead><tbody></tbody></table>
+  <p class="caption">Click a row to scout them.</p>
+
+  <div class="note">
+    <b>How the two metrics are built</b>
+    The pulls behind this page carry no box score, so one is reconstructed.
+    Points and minutes come from the possessions pull, field goals from the shot
+    chart, free throws from the difference between the two, and rebounds,
+    assists, steals, blocks and rim defence from the tracking pulls. Summed over
+    the league that lands on the season's real per&#8209;team&#8209;game rates,
+    which is the check that nobody is being dropped or double counted. Turnovers
+    are the one estimate: the pulls track them only on drives and on paint, post
+    and elbow touches, so the rest are spread across each player's untracked
+    touches at one league rate.
+    <br><br>
+    Every box event is then priced in points against what a possession is worth.
+    Scoring needs no price &mdash; it is what a player scored above what the
+    league would have scored on his own shot volume &mdash; and the rest are
+    estimates kept in one table rather than buried in a formula. One is worth
+    pulling out: the tracking pull credits a shot at the rim to whoever was
+    nearest, and being nearest is an assignment rather than a choice. A guard is
+    the closest defender at the rim mostly when he has already been beaten, and
+    the league shows it &mdash; defenders facing the fewest rim attempts allow
+    72%, those facing the most allow 60%. So the baseline moves with volume, and
+    a player is measured against what the league allows at his own rim volume.
+    <br><br>
+    Box plus/minus is those points per 100 possessions, centred so the league
+    averages zero. Win shares read the same events through Dean Oliver's
+    framework instead, which is why both are here rather than one being a
+    rescaling of the other. Average WS/48 is 0.100, which is arithmetic and not
+    a choice: win shares sum to wins, teams average .500, so a player who plays a
+    fifth of his team's minutes earns a fifth of 41 wins. There is no opponent
+    data in these pulls, so every team is treated as league&#8209;average
+    defensively &mdash; a player is credited for the stops he makes, not for the
+    defence around him.
   </div>
 
   <hr class="sep">
@@ -277,7 +363,7 @@ function mix(a, b, t) {
     return ("0" + Math.round(av + (bv - av) * t).toString(16)).slice(-2);
   }).join("");
 }
-var COLD = "#B35806", HOT = "#542788", MID = "#F3F1EC";
+var COLD = "#2166AC", HOT = "#B2182B", MID = "#F3F1EC";
 /* Diverging, two hues to a neutral middle: t in [-1, 1]. */
 function diverge(t) {
   t = Math.max(-1, Math.min(1, t));
@@ -438,6 +524,56 @@ function fillProfile(table, rows) {
   }).join("");
 }
 
+/* ---- impact ---------------------------------------------------------- */
+function fmtImpact(value, how) {
+  if (value === null || value === undefined) return "&mdash;";
+  if (how === "fixed3") return value.toFixed(3);
+  if (how === "fixed1") return value.toFixed(1);
+  return (value >= 0 ? "+" : "") + value.toFixed(1);
+}
+
+function fillImpact(entry) {
+  var body = $("impact").querySelector("tbody");
+  body.innerHTML = D.impact.metrics.map(function (m, i) {
+    var row = entry.im ? entry.im[i] : null;
+    return "<tr><td>" + m[0] + "</td>" +
+      '<td class="num' + (row ? "" : " dash") + '">' +
+      (row ? fmtImpact(row[0], m[1]) : "&mdash;") + "</td>" +
+      '<td class="txt">' + m[2] + "</td>" + pctCell(row ? row[1] : null) + "</tr>";
+  }).join("");
+
+  /* The two halves in points rather than per 100: this row is about what a
+     player did over the season, not the rate he did it at. */
+  var box = $("halves");
+  if (!entry.ha) {
+    box.innerHTML = '<p class="caption" style="margin:0">No shot chart for this ' +
+      "player, so there is no reconstructed box score to price.</p>";
+    $("impactcap").textContent = "";
+    return;
+  }
+  var lim = Math.max(60, Math.abs(entry.ha[0]), Math.abs(entry.ha[1]));
+  box.innerHTML = [["Offence", entry.ha[0]], ["Defence", entry.ha[1]]].map(function (h) {
+    var w = Math.abs(h[1]) / lim * 50;
+    return '<div class="brow"><span class="lb">' + h[0] + "</span>" +
+      '<span class="track"><span class="zero" style="left:50%"></span>' +
+      '<span class="fill" style="left:' + (h[1] < 0 ? 50 - w : 50) + "%;width:" + w +
+        "%;background:" + (h[1] < 0 ? COLD : HOT) + '"></span></span>' +
+      '<span class="bval">' + (h[1] >= 0 ? "+" : "") + h[1] + "</span></div>";
+  }).join("");
+  $("impactcap").innerHTML = "Points added over an average player, priced off " +
+    "the box score: scoring above league true shooting on the same volume, the " +
+    "points a pass sets up, a turnover against the possession it cost, rebounds " +
+    "against the share a teammate would have got anyway, and stops. Percentiles " +
+    "rank against everyone over " + D.impact.floor + " minutes.";
+}
+
+function fillTiers(entry) {
+  Array.prototype.forEach.call($("tiergrid").children, function (node, i) {
+    node.className = "tcard" + (D.tiers[i].star ? " star" : "") +
+                     (entry.ti === i ? " on" : "");
+  });
+}
+
 /* ---- z profile bars -------------------------------------------------- */
 function drawZ(entry) {
   var box = $("zbars");
@@ -491,6 +627,8 @@ function render(pid) {
   $("pname").textContent = e.n;
   $("pteam").textContent = team.name + " · " + e.t + " · " + D.season;
 
+  /* Two chips on purpose: the archetype says how a player is used, the tier
+     says how much he is worth. Neither answer implies the other. */
   var chip = $("parch");
   if (e.a === undefined) {
     chip.className = "chip none";
@@ -498,6 +636,15 @@ function render(pid) {
   } else {
     chip.className = "chip";
     chip.textContent = D.archetypes[e.a].name;
+  }
+
+  var tierChip = $("ptier");
+  if (e.ti === undefined) {
+    tierChip.style.display = "none";
+  } else {
+    tierChip.style.display = "";
+    tierChip.className = "chip tier" + (D.tiers[e.ti].star ? " star" : "");
+    tierChip.textContent = D.tiers[e.ti].name;
   }
 
   $("pstats").innerHTML = [["Games", e.gp], ["Minutes", e.min],
@@ -515,8 +662,8 @@ function render(pid) {
   if (e.hx) { for (var i = 1; i < e.hx.length; i += 3) shots += e.hx[i]; }
   $("courtcap").innerHTML = shots
     ? shots.toLocaleString() + " shots. Hex size is volume; colour is this player's " +
-      "FG% against the league's from the same hex, so purple is a spot they shoot " +
-      "better than the league does and orange is one they do not. Grey hexes are " +
+      "FG% against the league's from the same hex, so red is a spot they shoot " +
+      "better than the league does and blue is one they do not. Grey hexes are " +
       "places the league does not shoot enough from to compare against."
     : "No shot chart for this player.";
   var mid = diverge(0);
@@ -535,6 +682,8 @@ function render(pid) {
     return [label, row[0] === null ? null : (row[0] * 100).toFixed(1) + "%", row[1], row[2]];
   }));
 
+  fillImpact(e);
+  fillTiers(e);
   drawZ(e);
 
   var body = $("similar").querySelector("tbody");
@@ -590,6 +739,45 @@ $("archgrid").innerHTML = D.archetypes.map(function (a) {
       return "<li>" + t[0] + " " + (t[1] >= 0 ? "+" : "") + t[1].toFixed(1) + "</li>";
     }).join("") + "</ul></div>";
 }).join("");
+
+$("tiergrid").innerHTML = D.tiers.map(function (t) {
+  return '<div class="tcard"><span class="tn">' + t.name + "</span>" +
+    '<span class="tc">' + t.n + " players</span>" +
+    '<span class="td">Box +/- ' + (t.bpm >= 0 ? "+" : "") + t.bpm.toFixed(1) +
+    " &middot; WS/48 " + t.ws48.toFixed(3) + " &middot; " + t.ppg.toFixed(1) +
+    " pts and " + t.mpg.toFixed(1) + " min a game<br>" + t.defines + "</span></div>";
+}).join("");
+
+$("tiercap").innerHTML = "A second clustering, on the axis the archetypes throw " +
+  "away. Those divide volume out on purpose &mdash; their question is what a " +
+  "player does &mdash; so they cannot tell a bench guard from a franchise guard " +
+  "who takes the same shots. These put volume back in, on per&#8209;game " +
+  "features. k = " + D.tierK + " comes off the silhouette score (" +
+  D.tierSilhouette + ") subject to the top tier holding no more than a small " +
+  "share of the league, and the tiers are named by where their centres rank " +
+  "rather than by hand, so <em>star</em> is where the league separates instead " +
+  "of a number somebody picked. The two middle tiers separate on minutes as " +
+  "much as on quality: a bench big who rebounds well in nineteen minutes rates " +
+  "ahead of a starter per possession and behind him per night, which is what " +
+  "the line under each tier is there to show.";
+
+$("starboard").querySelector("tbody").innerHTML = D.stars.map(function (s) {
+  var p = D.players[s[0]];
+  if (!p) return "";
+  return '<tr data-pid="' + s[0] + '" style="cursor:pointer"><td>' + p.n +
+    "</td><td>" + p.t + '</td><td class="num">' + (s[1] >= 0 ? "+" : "") +
+    s[1].toFixed(1) + '</td><td class="num">' + s[2].toFixed(3) +
+    '</td><td class="num">' + s[3].toFixed(1) + '</td><td class="num">' +
+    s[4].toFixed(1) + '</td><td class="num">' + s[5].toFixed(1) + "</td></tr>";
+}).join("");
+
+$("starboard").addEventListener("click", function (ev) {
+  var row = ev.target.closest("tr[data-pid]");
+  if (!row) return;
+  var pid = row.getAttribute("data-pid");
+  $("team").value = D.players[pid].t;
+  fillPlayers(D.players[pid].t, pid);
+});
 
 $("sub").textContent = D.season + " season · " + Object.keys(D.players).length +
   " players · " + D.archetypes.length + " archetypes over " + D.clustered +
