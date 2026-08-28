@@ -24,6 +24,11 @@
      the two it belonged to. */
   --cold:#2166AC;--hot:#B2182B;--mid:#F3F1EC;
   --recv:#DFA22C;--cov:#542788;--other:#7A8B81;--ball:#C1442A;
+  /* The two lines every broadcast draws, in the colours every broadcast
+     draws them: blue for where the play started, yellow for the line to
+     gain. Both are lifted well clear of the field green so they read as
+     markings laid over the grass rather than as part of it. */
+  --los:#6BA8E8;--first:#F2C230;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
@@ -246,6 +251,8 @@ input[type=range]{flex:1;accent-color:var(--field)}
             <span><i style="background:var(--cov)"></i>Nearest defender</span>
             <span><i style="background:var(--other)"></i>Other tracked</span>
             <span><i style="background:var(--ball)"></i>Ball landing spot</span>
+            <span><i style="background:var(--los)"></i>Line of scrimmage</span>
+            <span><i style="background:var(--first)"></i>Line to gain</span>
           </div>
           <!-- The stat groups each carry their own grid4, so this is a plain
                block: making it a grid too would lay the three groups out as
@@ -763,6 +770,44 @@ function loadGeometry(i) {
   drawField();
 }
 
+var DOWN_NAMES = ["", "1ST", "2ND", "3RD", "4TH"];
+function ordinalDown(d) { return DOWN_NAMES[d] || String(d); }
+
+/* The x of the line to gain, or null when the goal line already is it.
+   FLAG_RIGHT is the same flag the drawing uses to put the offence
+   left-to-right, so it is also the one that says which way "forward" is. */
+function firstDownLine(i) {
+  var los = P.losX[i], toGo = P.toGo[i];
+  if (!isFinite(los) || !isFinite(toGo) || toGo <= 0) return null;
+  var right = flag(i, FLAG_RIGHT);
+  var x = right ? los + toGo : los - toGo;
+  var goal = right ? GOAL_FAR : GOAL_NEAR;
+  if (right ? x >= goal : x <= goal) return null;   /* goal to go */
+  return x;
+}
+
+/* A full-height line with a small label sitting on it. The label gets its own
+   plate rather than being drawn straight onto the grass, because a yard
+   number or a route can pass behind it and the two would overprint. */
+function markLine(g, X, W, color, label) {
+  if (X < -2 || X > W + 2) return;
+  g.strokeStyle = color;
+  g.lineWidth = 2.4;
+  g.beginPath(); g.moveTo(X, 0); g.lineTo(X, g.canvas.height); g.stroke();
+
+  g.font = "700 10px " + cssVar("--mono");
+  var w = g.measureText(label).width + 10;
+  /* Keep the plate inside the canvas when the line is near an edge. */
+  var left = Math.max(1, Math.min(X - w / 2, W - w - 1));
+  g.fillStyle = color;
+  g.fillRect(left, 6, w, 15);
+  g.fillStyle = "#14201B";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(label, left + w / 2, 14);
+  g.textBaseline = "alphabetic";
+}
+
 var KIND_COLOR = ["var(--recv)", "var(--cov)", "var(--other)"];
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -784,7 +829,20 @@ function drawField() {
      - because a safety standing forty yards off would otherwise set the
      zoom for a one yard screen and shrink the actual play to a dot. Players
      outside the frame simply are not drawn. */
+  /* The line to gain. Which way the offence is going decides the sign, and
+     the flag that decides it is the same one that flips the drawing below.
+     In a goal to go situation the line to gain *is* the goal line, which is
+     already drawn heavier than anything else, so it comes back null rather
+     than as a second line laid over the first. */
+  var firstDownX = firstDownLine(i);
+
+  /* The line to gain earns its place in the fit box even though it is not
+     part of the action: on a third and long checkdown it is the whole point
+     of the play, and it sits outside a box built from the ball and the route
+     alone on a third of the season's targets. It costs a couple of yards of
+     zoom to include and answers "did this get there" without arithmetic. */
   var xs = [P.losX[i], P.landX[i]], ys = [P.landY[i]];
+  if (firstDownX !== null) xs.push(firstDownX);
   if (geo) {
     geo.route.forEach(function (q) { xs.push(q.x); ys.push(q.y); });
     geo.flight.forEach(function (t) {
@@ -898,12 +956,14 @@ function drawField() {
     g.beginPath(); g.moveTo(0, Y); g.lineTo(W, Y); g.stroke();
   });
 
-  /* Line of scrimmage. */
-  g.strokeStyle = cssVar("--gold");
-  g.lineWidth = 2;
-  g.setLineDash([7, 5]);
-  g.beginPath(); g.moveTo(px(P.losX[i]), 0); g.lineTo(px(P.losX[i]), H); g.stroke();
-  g.setLineDash([]);
+  /* Line of scrimmage and line to gain, in the colours a broadcast uses for
+     them. Drawn after the field markings and before the players, so a
+     receiver is never hidden behind a line. */
+  markLine(g, px(P.losX[i]), W, cssVar("--los"), "LOS");
+  if (firstDownX !== null) {
+    markLine(g, px(firstDownX), W, cssVar("--first"),
+             ordinalDown(P.down[i]) + " & " + P.toGo[i]);
+  }
 
   if (!geo) {
     g.fillStyle = "rgba(236,239,230,.7)";

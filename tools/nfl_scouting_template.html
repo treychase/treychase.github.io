@@ -24,6 +24,11 @@
      the two it belonged to. */
   --cold:#2166AC;--hot:#B2182B;--mid:#F3F1EC;
   --recv:#DFA22C;--cov:#542788;--other:#7A8B81;--ball:#C1442A;
+  /* The two lines every broadcast draws, in the colours every broadcast
+     draws them: blue for where the play started, yellow for the line to
+     gain. Both are lifted well clear of the field green so they read as
+     markings laid over the grass rather than as part of it. */
+  --los:#6BA8E8;--first:#F2C230;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
@@ -246,6 +251,8 @@ input[type=range]{flex:1;accent-color:var(--field)}
             <span><i style="background:var(--cov)"></i>Nearest defender</span>
             <span><i style="background:var(--other)"></i>Other tracked</span>
             <span><i style="background:var(--ball)"></i>Ball landing spot</span>
+            <span><i style="background:var(--los)"></i>Line of scrimmage</span>
+            <span><i style="background:var(--first)"></i>Line to gain</span>
           </div>
           <!-- The stat groups each carry their own grid4, so this is a plain
                block: making it a grid too would lay the three groups out as
