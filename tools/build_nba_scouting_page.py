@@ -1,9 +1,11 @@
 """Build the NBA scouting page from the nba-stats repo's committed data.
 
 Reads the tracking, possession and shot chart pulls, plus the archetype
-clustering from that repo, and writes one self-contained HTML page: pick a
-team, pick a player, and get their headshot, shot chart, shooting and touch
-profiles against league percentiles, and the archetype they cluster into.
+clustering, the impact metrics and the star tiers from that repo, and writes
+one self-contained HTML page: pick a team, pick a player, and get their
+headshot, shot chart, shooting and touch profiles against league percentiles,
+their box plus/minus and win shares, the archetype they cluster into and the
+tier they land in.
 
     python tools/build_nba_scouting_page.py \
         --repo <nba-stats repo> \
@@ -44,6 +46,15 @@ SHOOTING_METRICS = [
     ("efg", "Effective FG%", 100),
 ]
 TOUCH_AREAS = [("paint", "Paint"), ("post", "Post"), ("elbow", "Elbow")]
+
+# (column, label, format on the page, what the number means)
+IMPACT_METRICS = [
+    ("BPM", "Box +/-", "signed1", "points per 100 possessions, over average"),
+    ("OBPM", "Offensive box +/-", "signed1", "the offensive half of it"),
+    ("DBPM", "Defensive box +/-", "signed1", "the defensive half"),
+    ("WS48", "Win shares / 48", "fixed3", "an average player earns 0.100"),
+    ("WS", "Win shares", "fixed1", "wins on the season so far"),
+]
 
 MIN_SHOTS = 20        # below this a shot chart is a scatter of accidents
 
@@ -173,6 +184,10 @@ def league_hex_rates(centres, charts) -> list[float | None]:
 
 def build(repo: Path) -> dict:
     sys.path.insert(0, str(repo))
+    from advanced_metrics import (
+        AVERAGE_WS48, MIN_MINUTES, STAR_TIER,
+        build_box_panel, build_tier_features, fit_star_tiers, impact_metrics,
+    )
     from archetypes import FEATURE_NAMES, build_archetype_features, fit_archetypes
     from player_media import TEAM_COLORS
 
@@ -180,8 +195,16 @@ def build(repo: Path) -> dict:
     tracking = pd.read_csv(data / f"nba_tracking_combined_{SEASON}.csv")
     possessions = pd.read_csv(data / f"tracking_possessions_{SEASON}.csv")
     shots = pd.read_csv(data / f"nba_shot_chart_{SEASON}.csv")
+    box_path = data / f"nba_player_box_{SEASON}.csv"
+    box = pd.read_csv(box_path) if box_path.exists() else None
 
     model = fit_archetypes(build_archetype_features(tracking))
+    impact = impact_metrics(build_box_panel(shots, possessions, tracking, box=box))
+    tiers = fit_star_tiers(build_tier_features(impact.table))
+    impact_rows = impact.table.set_index("PLAYER_ID")
+    tier_of = tiers.table.set_index("PLAYER_ID")["TIER"].to_dict()
+    tier_index = {name: i for i, name in enumerate(
+        tiers.names[cluster] for cluster in tiers.order)}
     shooting = shooting_table(shots)
     touch = touch_table(possessions)
     centres, charts = hex_bins(shots)
@@ -230,6 +253,21 @@ def build(repo: Path) -> dict:
         if player_id in charts:
             entry["hx"] = charts[player_id]
 
+        if player_id in impact_rows.index:
+            line = impact_rows.loc[player_id]
+            entry["im"] = [
+                [round(float(line[column]), 4),
+                 None if pd.isna(line[f"{column}_PCTILE"])
+                 else round(float(line[f"{column}_PCTILE"]))]
+                for column, _label, _fmt, _meaning in IMPACT_METRICS
+            ]
+            # The two halves in points, for the split bar under the table.
+            entry["ha"] = [round(float(line["OFF_POINTS_ADDED"])),
+                           round(float(line["DEF_POINTS_ADDED"]))]
+        tier = tier_of.get(player_id)
+        if tier is not None:
+            entry["ti"] = tier_index[tier]
+
         label = model.label_of(player_id)
         if label is not None:
             profile = model.profile_of(player_id)
@@ -265,8 +303,45 @@ def build(repo: Path) -> dict:
             "top": [[str(k), round(float(v), 2)] for k, v in top.items()],
         })
 
+    tier_table = tiers.summary()
+    tier_payload = [
+        {
+            "name": str(row["TIER"]),
+            "n": int(row["PLAYERS"]),
+            "bpm": round(float(row["BPM"]), 2),
+            "ws48": round(float(row["WS48"]), 3),
+            "mpg": round(float(row["MPG"]), 1),
+            "ppg": round(float(row["PTS_PG"]), 1),
+            "defines": str(row["DEFINES"]),
+            "star": bool(row["TIER"] == STAR_TIER),
+        }
+        for _, row in tier_table.iterrows()
+    ]
+    stars = tiers.stars
+    star_payload = [
+        [int(row["PLAYER_ID"]), round(float(row["BPM"]), 2),
+         round(float(row["WS48"]), 3), round(float(row["WS"]), 1),
+         round(float(row["PTS_PG"]), 1), round(float(row["MPG"]), 1)]
+        for _, row in stars.iterrows()
+        if str(int(row["PLAYER_ID"])) in players
+    ]
+
     return {
         "season": SEASON,
+        "impact": {
+            "metrics": [[label, fmt, meaning]
+                        for _c, label, fmt, meaning in IMPACT_METRICS],
+            "pace": round(float(impact.pace), 1),
+            "ppp": round(float(impact.points_per_possession), 3),
+            "estimated": bool(impact.turnovers_estimated),
+            "floor": int(MIN_MINUTES),
+            "average_ws48": AVERAGE_WS48,
+        },
+        "tiers": tier_payload,
+        "stars": star_payload,
+        "tierK": tiers.k,
+        "tierSilhouette": round(float(tiers.silhouette), 3),
+        "tierClustered": int(len(tiers.table)),
         "teams": dict(sorted(teams.items(), key=lambda kv: kv[1]["name"])),
         "players": players,
         "features": list(FEATURE_NAMES),
@@ -297,7 +372,8 @@ def main() -> None:
     print(f"{args.out}: {args.out.stat().st_size / 1024:.0f} KB, "
           f"{len(payload['players'])} players, {len(payload['teams'])} teams, "
           f"k={payload['k']} (silhouette {payload['silhouette']}), "
-          f"{len(payload['hex']['centres'])} hexes")
+          f"{len(payload['hex']['centres'])} hexes, "
+          f"{len(payload['tiers'])} tiers with {len(payload['stars'])} stars")
 
 
 if __name__ == "__main__":
