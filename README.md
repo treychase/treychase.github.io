@@ -179,6 +179,7 @@ loads immediately rather than waiting on a Space to wake up:
 | --- | --- | --- |
 | `projects/driveline-dashboard.html` | [driveline-pitching](https://github.com/treychase/driveline-pitching) | `python dashboard_html.py --out dashboard.html` |
 | `projects/driveline-hitting-dashboard.html` | [driveline-hitting](https://github.com/treychase/driveline-hitting) | `save_dashboard(swing_dashboard(...))`, see that repo's README |
+| `projects/nfl-scouting.html` | [NFL_big_data_bowl_2026](https://github.com/treychase/NFL_big_data_bowl_2026) | `python -m nfl_scouting page`, then copy `dashboard/nfl-scouting.html` here |
 | `projects/skater-tracking-dashboard.html` | `tools/` in this repo, from the player-tracking analysis repo | `python tools/build_skater_dashboard.py --games-dir <that repo>/games` |
 | `projects/run-value-matrix.html` | `tools/` in this repo, from the run values repo | `python tools/build_run_values_page.py --rds <that repo>/master_run_values.rds` |
 | `projects/stock-forecast-dashboard.html` | `tools/` in this repo, from the Bayesian time-series repo | `python tools/build_stock_dashboard.py --repo <that repo>` |
@@ -187,6 +188,15 @@ loads immediately rather than waiting on a Space to wake up:
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
+
+The NFL scouting page is the third built elsewhere and copied in. Its
+template, its script and the build that assembles them live in the
+`dashboard/` directory of the analysis repo, next to the code that measures
+the field they draw - which is what lets the page take its field length and
+end zone depth from that project's own `config.py` rather than keeping a
+second copy of them here. Nothing about that page is edited in this repo; a
+change to how it looks or behaves is a change over there, and publishing it
+is copying the built file across.
 
 The skater replay is the one built here rather than copied in. `tools/` holds
 the two halves: `build_skater_dashboard.py` reads one period out of the
