@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stock Forecasts &middot; Trey Chase</title>
+<meta name="description" content="A two-state hidden Markov model with a DLM in each regime, forecasting the next trading week for a universe of stocks, with the fitted level and the posterior predictive fan drawn on the price history.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#ECEFE6;--panel:#E3E7DB;--ink:#14201B;--muted:#4B5A52;
+  --field:#1F5C43;--field-deep:#153F2E;--gold:#DFA22C;--gold-deep:#A9741A;
+  --line:rgba(20,32,27,.16);--line-soft:rgba(20,32,27,.08);
+  --up:#1F5C43;--down:#B2182B;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
+.bar{
+  position:sticky;top:0;z-index:20;background:var(--field);
+  border-bottom:1px solid var(--field-deep);display:flex;align-items:center;
+  justify-content:space-between;gap:16px;padding:12px 22px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+}
+.bar a{color:rgba(236,239,230,.75);text-decoration:none}
+.bar a:hover{color:var(--paper)}
+.bar .who{color:var(--paper);font-weight:500}
+main{max-width:1120px;margin:0 auto;padding:22px}
+h1{font-size:clamp(1.3rem,3vw,1.9rem);font-weight:800;letter-spacing:-.02em;margin:0 0 6px;text-transform:uppercase}
+.sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 18px}
+p.intro{font-size:16px;line-height:1.6;max-width:70ch;margin:0 0 20px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:14px}
+.controls label{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+select{font-family:var(--mono);font-size:13px;padding:8px 12px;border-radius:999px;
+       border:1px solid var(--line);background:var(--paper);color:var(--ink);min-width:120px}
+.outs{display:inline-flex;gap:6px}
+.outs button{appearance:none;cursor:pointer;font-family:var(--mono);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;padding:8px 13px;border-radius:999px;
+  border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+.outs button:hover{border-color:var(--field);color:var(--field)}
+.outs button.on{background:var(--field);border-color:var(--field);color:var(--paper)}
+.outs button.on:hover{background:var(--field-deep);border-color:var(--field-deep);color:var(--paper)}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:20px;align-items:start}
+@media (max-width:860px){.layout{grid-template-columns:1fr}}
+.chartwrap{border:1px solid var(--line);background:var(--paper);padding:10px 10px 4px;position:relative}
+.striplabel{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin:6px 0 0 56px}
+svg{display:block;width:100%;height:auto}
+.stats{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:14px;padding-top:14px;
+       border-top:1px solid var(--line-soft);font-family:var(--mono);font-size:11px;
+       letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.stats b{color:var(--ink);font-weight:700;font-size:13px;letter-spacing:.04em}
+.stats .up{color:var(--up)} .stats .down{color:var(--down)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-top:10px;
+        font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.swatch{width:14px;height:3px;border-radius:2px;display:inline-block}
+.swatch.band{height:11px;border-radius:2px;background:rgba(223,162,44,.3);border:1px solid rgba(169,116,26,.5)}
+.swatch.regime{height:11px;border-radius:2px;background:rgba(178,24,43,.16);border:1px solid rgba(178,24,43,.35)}
+.movers h2{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+           color:var(--field);margin:0 0 8px;font-weight:700}
+.movers table{border-collapse:collapse;width:100%;margin-bottom:18px}
+.movers td{border-bottom:1px solid var(--line-soft);padding:7px 4px;font-family:var(--mono);font-size:12px}
+.movers tr{cursor:pointer}
+.movers tr:hover td{background:var(--panel)}
+.movers tr.on td{background:var(--panel);font-weight:700}
+.movers td.pct{text-align:right}
+.movers td.pct.up{color:var(--up)} .movers td.pct.down{color:var(--down)}
+.tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .12s ease;background:var(--ink);
+     color:var(--paper);font-family:var(--mono);font-size:11px;padding:7px 10px;border-radius:4px;
+     z-index:50;line-height:1.5;white-space:nowrap}
+.note{border-left:3px solid var(--gold);background:rgba(223,162,44,.1);padding:14px 16px;margin:24px 0 0;
+      font-size:15px;line-height:1.55;max-width:72ch}
+.note b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+        margin-bottom:6px;color:var(--field-deep)}
+footer{border-top:1px solid var(--line);margin-top:40px;padding:24px 22px 40px;font-family:var(--mono);
+       font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+       display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between}
+footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a href="../index.html#markets">&#8249;&nbsp;&nbsp;Back to projects</a>
+  <span class="who">Stock forecasts</span>
+</div>
+
+<main>
+  <h1>One week ahead</h1>
+  <p class="sub" id="sub">Bayesian local-level model</p>
+
+  <p class="intro">
+    A hidden Markov model with two states and a local-level dynamic linear model
+    in each of them, fit by Gibbs sampler on log prices. Both states are complete
+    DLMs; the volatile one's variances are a common multiple of the calm one's,
+    so a regime is a stretch where everything &mdash; the level's drift and the
+    noise around it &mdash; is that many times larger. The chain decides which
+    regime each day belongs to.
+    The blue line is the fitted level against the actual close, the strip
+    underneath is what is left over, and the fan is the 95 percent posterior
+    predictive interval seven trading days out &mdash; a mixture over regime
+    paths, since the chain can switch during the week.
+  </p>
+
+  <div class="controls">
+    <label for="ticker">Ticker</label>
+    <select id="ticker"></select>
+    <label>History</label>
+    <span class="outs" id="range">
+      <button data-n="21">1M</button>
+      <button data-n="63" class="on">3M</button>
+      <button data-n="252">1Y</button>
+    </span>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="chartwrap">
+        <svg id="chart" viewBox="0 0 960 360" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Price history with forecast interval"></svg>
+        <p class="striplabel">Actual minus fitted</p>
+        <svg id="resid" viewBox="0 0 960 90" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Residual: actual close minus fitted level"></svg>
+      </div>
+      <div class="legend">
+        <span><i class="swatch" style="background:#1F5C43"></i> Actual close</span>
+        <span><i class="swatch" style="background:#2166AC"></i> Fitted level</span>
+        <span><i class="swatch band"></i> 95% interval</span>
+        <span><i class="swatch" style="background:#A9741A"></i> Posterior median</span>
+      </div>
+      <div class="stats">
+        <span>Last <b id="s-last">&mdash;</b></span>
+        <span>Projected <b id="s-fore">&mdash;</b></span>
+        <span>95% interval <b id="s-int">&mdash;</b></span>
+        <span>Expected <b id="s-ret">&mdash;</b></span>
+        <span>Interval width <b id="s-band">&mdash;</b></span>
+        <span>Fit RMSE <b id="s-rmse">&mdash;</b></span>
+        <span>Regime now <b id="s-regime">&mdash;</b></span>
+        <span>Daily level move <b id="s-vol">&mdash;</b></span>
+        <span>Volatile scale <b id="s-kappa">&mdash;</b></span>
+        <span>Regime persistence <b id="s-persist">&mdash;</b></span>
+      </div>
+    </div>
+
+    <div class="movers">
+      <h2>Projected top 5</h2>
+      <table id="top"></table>
+      <h2>Projected bottom 5</h2>
+      <table id="bottom"></table>
+      <h2>Widest interval</h2>
+      <table id="widest"></table>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>What this is and is not</b>
+    The prices are the sample dataset bundled with the project for offline demos
+    and tests, not a live market feed, and the forecasts were fit once when this
+    page was built. That sample is generated as a constant-volatility random
+    walk &mdash; one volatility per ticker, held for the whole two years &mdash;
+    so there are no volatility regimes in it to find, and the two-state model
+    correctly does not find any: the smoothed probability of the volatile state
+    comes out flat, near the mixture weight, on every day of every ticker. That
+    is why no stretch of the chart is shaded. The same model separates a
+    genuinely turbulent stretch from a calm one when there is one to separate,
+    which the project's test suite checks against data with a known regime
+    change. A local-level model says the best guess for next week is
+    roughly where the price is now, in either regime; what the two states buy is
+    the <em>width</em> around that guess. A ticker sitting in the volatile regime
+    today carries a wider fan than one in the calm regime, and because the chain
+    can switch during the week the interval is a mixture over regime paths rather
+    than one Gaussian. That is why the fan matters more here than the line down
+    its middle, and why the ranking of expected returns is close to noise while
+    the interval is not. Nothing here is investment advice.
+  </div>
+</main>
+
+<div class="tip" id="tip"></div>
+
+<footer>
+  <span>&copy; 2026 Trey Chase</span>
+  <span><a href="../index.html">Back to the site</a></span>
+</footer>
+
+<script>
+(function () {
+  var D = "__DATA__";
+  var W = 960, H = 360, L = 56, R = 16, T = 14, B = 28;
+  var names = Object.keys(D.tickers).sort();
+  var cur = names[0], range = 63;
+
+  var svg = document.getElementById('chart');
+  var tip = document.getElementById('tip');
+  var NS = 'http://www.w3.org/2000/svg';
+
+  function el(tag, attrs) {
+    var n = document.createElementNS(NS, tag);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  function money(v) { return '$' + v.toFixed(2); }
+  function pct(v) { return (v >= 0 ? '+' : '') + v.toFixed(2) + '%'; }
+
+  function draw() {
+    var t = D.tickers[cur];
+    var span = Math.min(range, t.history.length);
+    var from = t.history.length - span;
+    var hist = t.history.slice(from), dates = D.dates.slice(from);
+    var fitted = (t.fitted || []).slice(from), regime = (t.regime || []).slice(from);
+    var fan = t.fan, n = hist.length, total = n + fan.length;
+    var all = hist.concat(fitted, fan.map(function (f) { return f[0]; }),
+                          fan.map(function (f) { return f[2]; }));
+    var lo = Math.min.apply(null, all);
+    var hi = Math.max.apply(null, all);
+    var padv = (hi - lo) * 0.08 || 1;
+    lo -= padv; hi += padv;
+
+    var X = function (i) { return L + (W - L - R) * (i / (total - 1)); };
+    var Y = function (v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); };
+
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    /* No regime shading here, deliberately: see the note under the chart.
+       The bundled sample is a constant-volatility random walk, so the smoothed
+       regime probability comes out flat at whatever the mixture weight is —
+       16% every day for one ticker, 1% every day for another. Painting that
+       across the chart would draw structure the data does not have. */
+
+    /* recessive grid: five horizontal rules with the price on the left */
+    for (var g = 0; g <= 4; g++) {
+      var v = lo + (hi - lo) * g / 4, y = Y(v);
+      svg.appendChild(el('line', {x1: L, y1: y, x2: W - R, y2: y,
+        stroke: 'rgba(20,32,27,.10)', 'stroke-width': 1}));
+      var lab = el('text', {x: L - 8, y: y + 4, 'text-anchor': 'end',
+        'font-family': 'ui-monospace,SFMono-Regular,Menlo,monospace',
+        'font-size': 10, fill: '#4B5A52'});
+      lab.textContent = '$' + v.toFixed(0);
+      svg.appendChild(lab);
+    }
+
+    /* the forecast fan, anchored on the last close so it grows out of the line */
+    var upper = 'M ' + X(n - 1) + ' ' + Y(hist[n - 1]);
+    var lower = '';
+    fan.forEach(function (f, i) { upper += ' L ' + X(n + i) + ' ' + Y(f[2]); });
+    for (var i = fan.length - 1; i >= 0; i--) lower += ' L ' + X(n + i) + ' ' + Y(fan[i][0]);
+    lower += ' L ' + X(n - 1) + ' ' + Y(hist[n - 1]);
+    svg.appendChild(el('path', {d: upper + lower + ' Z', fill: 'rgba(223,162,44,.28)',
+      stroke: 'rgba(169,116,26,.45)', 'stroke-width': 1}));
+
+    /* posterior median, dashed so it never reads as observed data */
+    var med = 'M ' + X(n - 1) + ' ' + Y(hist[n - 1]);
+    fan.forEach(function (f, i) { med += ' L ' + X(n + i) + ' ' + Y(f[1]); });
+    svg.appendChild(el('path', {d: med, fill: 'none', stroke: '#A9741A',
+      'stroke-width': 2, 'stroke-dasharray': '5 4', 'stroke-linecap': 'round'}));
+
+    /* the model's fitted level, under the actual so the actual stays readable */
+    if (fitted.length === n) {
+      var fd = '';
+      fitted.forEach(function (v, i) { fd += (i ? ' L ' : 'M ') + X(i) + ' ' + Y(v); });
+      svg.appendChild(el('path', {d: fd, fill: 'none', stroke: '#2166AC',
+        'stroke-width': 1.6, 'stroke-dasharray': '4 3', 'stroke-linejoin': 'round'}));
+    }
+
+    /* actual close */
+    var d = '';
+    hist.forEach(function (v, i) { d += (i ? ' L ' : 'M ') + X(i) + ' ' + Y(v); });
+    svg.appendChild(el('path', {d: d, fill: 'none', stroke: '#1F5C43',
+      'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round'}));
+
+    /* where the forecast starts */
+    svg.appendChild(el('line', {x1: X(n - 1), y1: T, x2: X(n - 1), y2: H - B,
+      stroke: 'rgba(20,32,27,.28)', 'stroke-width': 1, 'stroke-dasharray': '3 3'}));
+    svg.appendChild(el('circle', {cx: X(n - 1), cy: Y(hist[n - 1]), r: 4,
+      fill: '#1F5C43', stroke: '#ECEFE6', 'stroke-width': 2}));
+
+    /* The first and last observed dates sit on the axis. The horizon label goes
+       above the fan instead: at a year of history the fork is 98% of the way
+       across, and a third date down there lands on top of the second. */
+    [[0, dates[0], 'start'], [n - 1, dates[n - 1], 'end']].forEach(function (p) {
+      var txt = el('text', {x: X(p[0]), y: H - 8, 'text-anchor': p[2],
+        'font-family': 'ui-monospace,SFMono-Regular,Menlo,monospace',
+        'font-size': 10, fill: '#4B5A52'});
+      txt.textContent = p[1];
+      svg.appendChild(txt);
+    });
+    var horizon = el('text', {x: W - R, y: T + 11, 'text-anchor': 'end',
+      'font-family': 'ui-monospace,SFMono-Regular,Menlo,monospace',
+      'font-size': 10, fill: '#A9741A'});
+    horizon.textContent = '+' + fan.length + ' trading days';
+    svg.appendChild(horizon);
+
+    /* hover layer: a crosshair on the history, one hit area over the plot */
+    var cross = el('line', {x1: 0, y1: T, x2: 0, y2: H - B, stroke: 'rgba(20,32,27,.35)',
+      'stroke-width': 1, opacity: 0});
+    var dot = el('circle', {r: 4.5, fill: '#1F5C43', stroke: '#ECEFE6', 'stroke-width': 2, opacity: 0});
+    svg.appendChild(cross); svg.appendChild(dot);
+    var hit = el('rect', {x: L, y: T, width: W - L - R, height: H - T - B, fill: 'transparent'});
+    svg.appendChild(hit);
+
+    hit.addEventListener('mousemove', function (ev) {
+      var box = svg.getBoundingClientRect();
+      var px = (ev.clientX - box.left) / box.width * W;
+      var i = Math.round((px - L) / (W - L - R) * (total - 1));
+      i = Math.max(0, Math.min(total - 1, i));
+      var label, value;
+      if (i < n) {
+        value = hist[i];
+        label = dates[i] + ' — ' + money(value);
+        if (fitted.length === n) label += '  (fitted ' + money(fitted[i]) + ')';
+        if (regime.length === n) label += '  P(volatile) ' + regime[i].toFixed(2);
+      }
+      else {
+        var f = fan[i - n];
+        value = f[1];
+        label = 'Day +' + (i - n + 1) + ' — ' + money(f[1]) + '  (' + money(f[0]) + ' to ' + money(f[2]) + ')';
+      }
+      cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', 1);
+      dot.setAttribute('cx', X(i)); dot.setAttribute('cy', Y(value)); dot.setAttribute('opacity', 1);
+      tip.textContent = cur + '  ' + label;
+      tip.style.opacity = '1';
+      tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 12, ev.clientX + 14) + 'px';
+      tip.style.top = (ev.clientY + 16) + 'px';
+    });
+    hit.addEventListener('mouseleave', function () {
+      cross.setAttribute('opacity', 0); dot.setAttribute('opacity', 0); tip.style.opacity = '0';
+    });
+
+    drawResiduals(hist, fitted, dates, X);
+
+    var last = fan[fan.length - 1];
+    document.getElementById('s-last').textContent = money(t.last);
+    document.getElementById('s-fore').textContent = money(last[1]);
+    document.getElementById('s-int').textContent = money(last[0]) + ' to ' + money(last[2]);
+    var r = document.getElementById('s-ret');
+    r.textContent = pct(t.ret);
+    r.className = t.ret >= 0 ? 'up' : 'down';
+    document.getElementById('s-band').textContent =
+      '\u00b1' + (band(cur) / 2).toFixed(1) + '% of price';
+    document.getElementById('s-rmse').textContent =
+      t.rmse === undefined ? '\u2014' : '$' + t.rmse.toFixed(2);
+    var pv = document.getElementById('s-regime');
+    if (t.pVol === undefined) { pv.textContent = '\u2014'; pv.className = ''; }
+    else {
+      pv.textContent = (t.pVol >= 0.5 ? 'Volatile' : 'Calm')
+        + ' · P ' + (t.pVol >= 0.5 ? t.pVol : 1 - t.pVol).toFixed(2);
+      pv.className = t.pVol >= 0.5 ? 'down' : 'up';
+    }
+    document.getElementById('s-vol').textContent =
+      t.vol ? t.vol[0].toFixed(2) + '% calm / ' + t.vol[1].toFixed(2) + '% volatile' : '\u2014';
+    document.getElementById('s-persist').textContent =
+      t.persist ? t.persist[0].toFixed(2) + ' / ' + t.persist[1].toFixed(2) : '\u2014';
+    document.getElementById('s-kappa').textContent =
+      t.kappa === undefined ? '\u2014' : t.kappa.toFixed(2) + '\u00d7 the calm regime';
+    document.getElementById('sub').textContent =
+      cur + ' · ' + dates[0] + ' to ' + dates[n - 1] + ' · ' + fan.length
+      + ' trading days ahead · two-state HMM';
+
+    Array.prototype.forEach.call(document.querySelectorAll('.movers tr'), function (tr) {
+      tr.classList.toggle('on', tr.dataset.t === cur);
+    });
+  }
+
+  /* the 95% interval a week out, as a percentage of the current price */
+  function band(k) {
+    var t = D.tickers[k], f = t.fan[t.fan.length - 1];
+    return (f[2] - f[0]) / t.last * 100;
+  }
+
+  /* The fitted level sits almost on top of the close — RMSE lands near two
+     hundredths of a percent — so the overlay alone cannot show where the two
+     part company. This strip plots the difference against a zero rule, which
+     is where a local-level fit is actually worth looking. */
+  function drawResiduals(hist, fitted, dates, X) {
+    var rs = document.getElementById('resid');
+    while (rs.firstChild) rs.removeChild(rs.firstChild);
+    if (fitted.length !== hist.length) return;
+    var RH = 90, RT = 10, RB = 14;
+    var diff = hist.map(function (v, i) { return v - fitted[i]; });
+    var mx = Math.max.apply(null, diff.map(Math.abs)) || 1;
+    var RY = function (v) { return RT + (RH - RT - RB) * (1 - (v + mx) / (2 * mx)); };
+
+    rs.appendChild(el('line', {x1: L, y1: RY(0), x2: W - R, y2: RY(0),
+      stroke: 'rgba(20,32,27,.28)', 'stroke-width': 1}));
+    var d = '';
+    diff.forEach(function (v, i) { d += (i ? ' L ' : 'M ') + X(i) + ' ' + RY(v); });
+    rs.appendChild(el('path', {d: d, fill: 'none', stroke: '#2166AC',
+      'stroke-width': 1.4, 'stroke-linejoin': 'round'}));
+    [[mx, RT + 9], [-mx, RH - RB - 1]].forEach(function (p) {
+      var txt = el('text', {x: L - 8, y: p[1], 'text-anchor': 'end',
+        'font-family': 'ui-monospace,SFMono-Regular,Menlo,monospace',
+        'font-size': 9, fill: '#4B5A52'});
+      txt.textContent = (p[0] >= 0 ? '+' : '\u2212') + '$' + Math.abs(p[0]).toFixed(2);
+      rs.appendChild(txt);
+    });
+  }
+
+  function movers() {
+    var rows = names.map(function (k) { return {t: k, r: D.tickers[k].ret}; })
+                    .sort(function (a, b) { return b.r - a.r; });
+    function fill(id, list, fmt, cls) {
+      document.getElementById(id).innerHTML = list.map(function (x) {
+        return '<tr data-t="' + x.t + '"><td>' + x.t + '</td>'
+             + '<td class="pct ' + cls(x) + '">' + fmt(x) + '</td></tr>';
+      }).join('');
+    }
+    var signed = function (x) { return x.r >= 0 ? 'up' : 'down'; };
+    fill('top', rows.slice(0, 5), function (x) { return pct(x.r); }, signed);
+    fill('bottom', rows.slice(-5).reverse(), function (x) { return pct(x.r); }, signed);
+
+    var wide = names.map(function (k) { return {t: k, r: band(k)}; })
+                    .sort(function (a, b) { return b.r - a.r; }).slice(0, 5);
+    fill('widest', wide, function (x) { return '\u00b1' + (x.r / 2).toFixed(1) + '%'; },
+         function () { return ''; });
+  }
+
+  var sel = document.getElementById('ticker');
+  sel.innerHTML = names.map(function (k) { return '<option>' + k + '</option>'; }).join('');
+  sel.addEventListener('change', function () { cur = this.value; draw(); });
+  document.querySelector('.movers').addEventListener('click', function (ev) {
+    var tr = ev.target.closest('tr[data-t]');
+    if (!tr) return;
+    cur = tr.dataset.t; sel.value = cur; draw();
+  });
+  document.getElementById('range').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button'); if (!b) return;
+    range = Number(b.dataset.n);
+    Array.prototype.forEach.call(this.querySelectorAll('button'), function (x) {
+      x.classList.toggle('on', x === b);
+    });
+    draw();
+  });
+  window.addEventListener('resize', function () { tip.style.opacity = '0'; });
+
+  movers();
+  draw();
+})();
+</script>
+</body>
+</html>

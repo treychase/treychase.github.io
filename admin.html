@@ -295,8 +295,17 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
 (function () {
   var SECTIONS = [
     ['baseball', 'Baseball'], ['football', 'Football'], ['basketball', 'Basketball'],
-    ['hockey', 'Hockey'], ['health', 'Health'], ['articles', 'Articles'], ['blogs', 'Blogs']
+    ['hockey', 'Hockey'], ['health', 'Health'], ['markets', 'Markets'],
+    ['writing', 'Writing']
   ];
+  /* Articles and blogs were separate sections before they were merged into one
+     Writing tab. The site still renders those two keys there, so the rail has
+     to list them there too, or an older entry would be invisible in the editor
+     while still being live on the site. */
+  var ALIASES = { writing: ['writing', 'articles', 'blogs'] };
+  function inSection(entry, key) {
+    return (ALIASES[key] || [key]).indexOf(entry.section) >= 0;
+  }
   var DATA_PATH = 'data/projects.js';
   var HS_FALLBACK = { src: 'files/headshot.jpg', zoom: 2, x: 57.5, y: 39 };
 
@@ -325,8 +334,8 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function blank() {
-    return { section: 'baseball', title: '', year: '', tags: [], status: '', pinned: false,
-             body: [''], stack: '', links: [], files: [] };
+    return { section: 'baseball', title: '', summary: '', year: '', tags: [], status: '',
+             pinned: false, body: [''], stack: '', links: [], files: [] };
   }
   function safeName(n) {
     return n.replace(/\s+/g, '-').replace(/[^\w.\-]/g, '').toLowerCase();
@@ -544,7 +553,7 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     SECTIONS.forEach(function (s) {
       var key = s[0];
       var rows = data.map(function (e, i) { return { e: e, i: i }; })
-                     .filter(function (r) { return r.e.section === key; });
+                     .filter(function (r) { return inSection(r.e, key); });
       html += '<h2>' + s[1] + ' <span style="opacity:.5">' + rows.length + '</span></h2>';
       if (!rows.length) { html += '<p class="none">empty</p>'; return; }
       rows.forEach(function (r, n) {
@@ -799,6 +808,12 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     + '</div>'
     + '<div class="field"><label for="f-title">Title</label>'
     +   '<input type="text" id="f-title" value="' + esc(e.title) + '" placeholder="What the project is called"></div>'
+    + '<div class="field"><label for="f-summary">Summary</label>'
+    +   '<textarea class="short" id="f-summary" placeholder="The one line the card shows.">'
+    +   esc(e.summary || '') + '</textarea>'
+    +   '<p class="help">All a card shows until someone presses Read more, which opens '
+    +   'the description in its place. One line. Left empty, the first paragraph of the '
+    +   'description stands in.</p></div>'
     + '<div class="field"><label>Front page</label>'
     +   '<label class="toggle"><input type="checkbox" id="f-pinned"' + (e.pinned ? ' checked' : '') + '>'
     +   '<span class="track"></span><span class="lbl">Pin to front page</span></label>'
@@ -925,6 +940,7 @@ input[type=range]{width:100%;accent-color:var(--field);margin:0}
     var pin = document.getElementById('f-pinned');
     e.pinned  = pin ? pin.checked : !!e.pinned;
     e.title   = val('f-title').trim();
+    e.summary = val('f-summary').trim();
     e.year    = val('f-year').trim();
     e.tags    = val('f-tags').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
     e.body    = val('f-body').split(/\n\s*\n/).map(function (s) { return s.trim().replace(/\s*\n\s*/g, ' '); }).filter(Boolean);

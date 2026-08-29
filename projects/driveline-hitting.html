@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Driveline Hitting Dashboard &middot; Trey Chase</title>
+<meta name="description" content="Documentation for the Driveline hitting dashboard: motion capture swings, a Gaussian process exit velocity model, and a biomechanics percentile table.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --paper:#ECEFE6;--panel:#E3E7DB;--ink:#14201B;--muted:#4B5A52;
+  --field:#1F5C43;--field-deep:#153F2E;--gold:#DFA22C;
+  --line:rgba(20,32,27,.16);--line-soft:rgba(20,32,27,.08);
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"Newsreader",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --max:880px;--gut:clamp(20px,5vw,56px);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--body);font-size:17px;line-height:1.62;font-optical-sizing:auto;
+}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--field);outline-offset:3px;border-radius:2px}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gut)}
+
+/* ---------- top bar ---------- */
+.topbar{
+  position:sticky;top:0;z-index:20;
+  background:var(--field);border-bottom:1px solid var(--field-deep);
+}
+.topbar .wrap{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding-top:12px;padding-bottom:12px;
+}
+.back{
+  display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+  color:rgba(236,239,230,.72);transition:color .18s ease,gap .18s ease;
+}
+.back:hover{color:var(--paper);gap:14px}
+.back svg{width:12px;height:12px}
+.launch{
+  display:inline-flex;align-items:center;gap:9px;text-decoration:none;white-space:nowrap;
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.13em;text-transform:uppercase;
+  background:var(--gold);color:var(--ink);border-radius:999px;padding:9px 17px;
+  transition:background .18s ease,transform .18s ease;
+}
+.launch:hover{background:#F2B53C;transform:translateY(-1px)}
+.topbar :focus-visible{outline-color:var(--gold)}
+
+/* ---------- hero ---------- */
+.hero{padding:clamp(38px,7vw,72px) 0 clamp(26px,4vw,40px)}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 16px;
+}
+.eyebrow span{color:var(--field)}
+h1{
+  font-family:var(--display);font-variation-settings:"wdth" 94;font-weight:800;
+  font-size:clamp(2.3rem,7vw,4rem);line-height:.94;letter-spacing:-.03em;
+  margin:0 0 20px;text-transform:uppercase;
+}
+.lede{font-size:clamp(1.08rem,2.2vw,1.3rem);line-height:1.5;font-weight:300;margin:0;max-width:56ch}
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px;margin:clamp(24px,4vw,34px) 0 0;padding:0;list-style:none;
+}
+.meta li{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:999px;padding:7px 13px;color:var(--muted);
+}
+.meta li.on{background:var(--field);border-color:var(--field);color:var(--paper)}
+
+/* ---------- sections ---------- */
+section{padding:clamp(30px,5vw,48px) 0;border-top:1px solid var(--line)}
+h2{
+  font-family:var(--display);font-variation-settings:"wdth" 90;font-weight:700;
+  font-size:clamp(1.35rem,3.2vw,1.9rem);letter-spacing:-.02em;line-height:1.1;
+  margin:0 0 8px;text-transform:uppercase;
+}
+.sub{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 clamp(20px,3vw,28px);
+}
+h3{
+  font-family:var(--display);font-variation-settings:"wdth" 92;font-weight:700;
+  font-size:1.1rem;letter-spacing:-.012em;margin:26px 0 8px;
+}
+p{margin:0 0 14px;max-width:68ch}
+p:last-child{margin-bottom:0}
+strong{font-weight:600}
+code{
+  font-family:var(--mono);font-size:.86em;
+  background:rgba(20,32,27,.07);padding:2px 6px;border-radius:3px;
+}
+
+/* ---------- feature list ---------- */
+.features{list-style:none;padding:0;margin:0;display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
+.features li{background:var(--paper);padding:18px clamp(16px,2.5vw,22px)}
+.features h4{
+  font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--field);margin:0 0 7px;
+}
+.features p{margin:0;font-size:16px;line-height:1.55}
+
+/* ---------- key/value table ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:460px;background:var(--paper)}
+th,td{text-align:left;padding:12px 16px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--field);background:var(--panel);border-bottom:1px solid var(--line);
+}
+td{font-size:15.5px;line-height:1.5}
+td:first-child{font-family:var(--mono);font-size:12.5px;white-space:nowrap;color:var(--ink)}
+tr:last-child td{border-bottom:0}
+
+/* ---------- pipeline diagram ---------- */
+.flow{
+  display:grid;gap:10px;margin:0 0 18px;padding:clamp(18px,3vw,26px);
+  border:1px solid var(--line);background:var(--panel);
+}
+.flow .step{
+  display:grid;grid-template-columns:26px minmax(0,1fr);gap:14px;align-items:start;
+}
+.flow .n{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--field);color:var(--paper);
+  font-family:var(--mono);font-size:11px;font-weight:700;
+}
+.flow .what{
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--field);margin:5px 0 3px;font-weight:500;
+}
+.flow .desc{font-size:15.5px;line-height:1.5;margin:0;color:var(--ink)}
+.flow .rule{height:14px;border-left:1px solid var(--line);margin-left:13px}
+
+/* ---------- callout ---------- */
+.note{
+  border-left:3px solid var(--gold);background:rgba(223,162,44,.1);
+  padding:15px 18px;margin:18px 0 0;font-size:16px;
+}
+.note b{
+  display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:6px;color:var(--field-deep);
+}
+
+/* ---------- math-ish block ---------- */
+.spec{
+  font-family:var(--mono);font-size:13px;line-height:1.75;
+  background:var(--panel);border:1px solid var(--line);
+  padding:16px 18px;margin:0 0 16px;overflow-x:auto;
+}
+.spec .k{color:var(--field);font-weight:700}
+
+/* ---------- cta ---------- */
+.cta{
+  display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:clamp(24px,4vw,34px);border:1px solid var(--field);background:var(--panel);
+  margin-top:clamp(30px,5vw,44px);
+}
+.cta p{margin:0;flex:1 1 260px;font-size:16px}
+.cta .launch{background:var(--field);color:var(--paper);padding:12px 22px}
+.cta .launch:hover{background:var(--field-deep)}
+
+footer{
+  border-top:1px solid var(--line);padding:30px 0 46px;margin-top:clamp(30px,5vw,48px);
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between;
+}
+footer a{text-decoration:none;border-bottom:1px solid var(--line)}
+footer a:hover{color:var(--field);border-color:var(--field)}
+
+@media (max-width:560px){body{font-size:16px}}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important}html{scroll-behavior:auto}}
+@media print{
+  .topbar{position:static}
+  section,.features li,.flow,.cta{break-inside:avoid}
+  .cta,.launch{display:none}
+}
+</style>
+<style>
+/* ---------- screenshots ---------- */
+figure{margin:0 0 18px}
+figure img{
+  display:block;width:100%;height:auto;
+  border:1px solid var(--line);background:var(--panel);
+}
+figcaption{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin-top:9px;
+}
+.shots{display:grid;gap:clamp(14px,2.5vw,22px);grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.shots figure{margin:0}
+.pitchgif{max-width:420px}
+.linkrow{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 0}
+.linkrow a{
+  display:inline-flex;align-items:center;gap:8px;text-decoration:none;
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  border:1px solid var(--line);border-radius:999px;padding:9px 16px;color:var(--muted);
+  transition:border-color .18s ease,color .18s ease;
+}
+.linkrow a:hover{border-color:var(--field);color:var(--field)}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="back" href="../index.html#baseball">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg>
+      Back to projects
+    </a>
+    <a class="launch" href="driveline-hitting-dashboard.html" target="_blank" rel="noopener">
+      Open the dashboard
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+    </a>
+  </div>
+</div>
+
+<header class="hero wrap">
+  <p class="eyebrow">Baseball <span>/</span> Biomechanics <span>/</span> interactive dashboard</p>
+  <h1>Driveline Hitters,<br>Swing by Swing</h1>
+  <p class="lede">
+    Pick a hitter and watch the swing: the skeleton and the bat moving through
+    contact, the bat speed and the weight shift under each leg on one timeline,
+    and what the model expected the ball to leave at against what it actually did.
+  </p>
+  <ul class="meta">
+    <li class="on">Live</li>
+    <li>2026</li>
+    <li>Python &middot; scikit-learn</li>
+    <li>Gaussian process</li>
+    <li>Plotly &middot; Streamlit</li>
+    <li>687 swings</li>
+  </ul>
+  <div class="linkrow">
+    <a href="driveline-hitting-dashboard.html" target="_blank" rel="noopener">Open the dashboard</a>
+    <a href="https://github.com/treychase/driveline-hitting" target="_blank" rel="noopener">View the code</a>
+    <a href="https://github.com/drivelineresearch/openbiomechanics" target="_blank" rel="noopener">The OBP dataset</a>
+  </div>
+</header>
+
+<main>
+
+<section class="wrap">
+  <h2>Three panels, one swing</h2>
+  <p class="sub">Press play and the whole page moves together</p>
+  <p>
+    The dashboard is a single self-contained page. A dropdown carries eight
+    hitters spanning a wide range of contact quality, from a 73.5 mph average exit
+    velocity to 107.0, college and high school, right and left handed. Choosing one
+    reloads all three panels.
+  </p>
+  <figure>
+    <img src="../files/driveline-hitting/dashboard.png" alt="The hitting dashboard: a 3D skeleton and bat mid-swing beside a bat speed and leg force timeline and a predicted against actual exit velocity scatter" loading="lazy">
+    <figcaption>The dashboard, mid-swing</figcaption>
+  </figure>
+  <ul class="features">
+    <li>
+      <h4>The swing in 3D</h4>
+      <p>Skeleton and bat reconstructed from the raw motion capture, animating through the swing on a batter's box laid out for the hitter's handedness.</p>
+    </li>
+    <li>
+      <h4>Bat speed and weight shift</h4>
+      <p>Bat speed against the vertical force each leg is putting into the ground, plotted on time-to-contact so zero is the ball, with a cursor that tracks the animation.</p>
+    </li>
+    <li>
+      <h4>Model against reality</h4>
+      <p>Every modelled swing as predicted against actual exit velocity, with the loaded swing highlighted and its error labelled, so one hitter is always read against the population.</p>
+    </li>
+  </ul>
+</section>
+
+<section class="wrap">
+  <h2>Predicting exit velocity</h2>
+  <p class="sub">A Gaussian process, chosen by cross validation</p>
+  <p>
+    Three models were fit to the same eight features and compared on five-fold
+    cross-validated RMSE. The Gaussian process won, and is what the dashboard and
+    the app predict with.
+  </p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Model</th><th scope="col">Cross-validated RMSE (mph)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Gaussian process</td><td>6.16 &mdash; the model in the dashboard</td></tr>
+        <tr><td>Random forest</td><td>6.57</td></tr>
+        <tr><td>XGBoost</td><td>6.71</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="spec">
+    <span class="k">Kernel</span>     constant &times; Mat&eacute;rn(&nu; = 3/2, one length scale per feature) + white noise<br>
+    <span class="k">Scaling</span>    features standardized first &mdash; a GP works off distances between<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; swings, so degrees would otherwise drown out a ratio<br>
+    <span class="k">Validation</span> 5-fold, shuffled; the scatter plots out-of-fold predictions, never<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; a swing the model saw in training
+  </div>
+  <p>
+    A Mat&eacute;rn 3/2 kernel rather than the squared exponential is the deliberate
+    choice: the squared exponential assumes the response surface is infinitely
+    smooth, which is a strong claim about how exit velocity moves as mechanics
+    change. The separate length scale per feature also doubles as a read on which
+    inputs the model actually leans on.
+  </p>
+</section>
+
+<section class="wrap">
+  <h2>The eight features</h2>
+  <p class="sub">Swing mechanics, then contact, then the pitch</p>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Feature</th><th scope="col">What it is</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Peak hand speed</td><td>How fast the hands are moving at their fastest in the swing</td></tr>
+        <tr><td>Peak torso rotation</td><td>Maximum torso angular velocity, the engine underneath the hands</td></tr>
+        <tr><td>Swing efficiency</td><td>Bat speed over hand speed &mdash; how much of the hand speed reaches the barrel</td></tr>
+        <tr><td>Early connection</td><td>The angle between bat and torso at the start of the swing</td></tr>
+        <tr><td>Attack angle</td><td>The bat's path through contact, up or down relative to the ball</td></tr>
+        <tr><td>Contact point</td><td>Where the ball met the bat, across the plate and in height</td></tr>
+        <tr><td>Pitch descent angle</td><td>What the pitch was doing on the way in</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note">
+    <b>Why swing efficiency is its own feature</b>
+    Hand speed and bat speed are both in the data, and both correlate with a hard
+    hit ball. Their ratio is the more interesting quantity: it separates a hitter
+    who generates barrel speed from one who is simply moving his hands fast, which
+    is the difference between a mechanical fix and a strength one.
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Percentiles</h2>
+  <p class="sub">Where one swing sits in the room</p>
+  <p>
+    A raw number for peak torso rotation means nothing without a reference, so every
+    feature is also ranked across the swings the model was fit on and shown as a
+    percentile beneath the figure in the app.
+  </p>
+  <div class="note">
+    <b>What a percentile here does not mean</b>
+    Ranks are inside this dataset, not against any wider population, and no metric
+    has a good end. A high attack angle percentile means steeper than most of the
+    room, not better than most of the room.
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Two ways to run it</h2>
+  <p class="sub">A page that just opens, and an app that reaches everything</p>
+  <div class="flow">
+    <div class="step">
+      <span class="n">1</span>
+      <div>
+        <p class="what">The static dashboard</p>
+        <p class="desc">One HTML file with eight hitters and the plotting library embedded, so it opens in a browser with nothing installed and no network. That is the copy linked from this page.</p>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="step">
+      <span class="n">2</span>
+      <div>
+        <p class="what">The Streamlit app</p>
+        <p class="desc">The same three panels with the hitter and swing chosen in the sidebar, so only one swing is ever loaded and any of the 687 is reachable rather than the eight baked into the file. The download, the swing index, and the model fit are all cached, so the wait is a first-run cost.</p>
+      </div>
+    </div>
+    <div class="rule"></div>
+    <div class="step">
+      <span class="n">3</span>
+      <div>
+        <p class="what">The motion capture</p>
+        <p class="desc">A 400 MB C3D archive pulled from the OpenBiomechanics release on demand and kept out of the repository. The app asks before fetching it rather than hiding a long download behind a spinner.</p>
+      </div>
+    </div>
+  </div>
+  <ul class="features">
+    <li>
+      <h4>A diagnostic rather than a blank page</h4>
+      <p>Three separate things make a Streamlit page come up empty: a stale cached frontend, a slow cold import, and a request that never returns. A <code>doctor.py</code> script checks the interpreter, every package, the unpacked archive, and whether GitHub is reachable, printing a line per check.</p>
+    </li>
+    <li>
+      <h4>Fails loudly instead of hanging</h4>
+      <p>Every startup request carries a timeout, so a firewall that drops packets surfaces as an error rather than an app that never finishes loading.</p>
+    </li>
+    <li>
+      <h4>Generated API docs</h4>
+      <p>Every module, constant and function is documented from the source. CI regenerates the reference and fails if it has drifted from the signatures it describes, so it cannot quietly go stale.</p>
+    </li>
+    <li>
+      <h4>Hermetic continuous integration</h4>
+      <p>Every push lints, imports each module, validates the notebook, and runs smoke tests that build the figure and the percentile table from synthetic swings &mdash; so CI exercises the real code paths without depending on a 400 MB download or on the dataset being reachable.</p>
+    </li>
+  </ul>
+  <div class="note">
+    <b>Data and licence</b>
+    The motion capture belongs to the Driveline OpenBiomechanics Project and is
+    licensed CC BY-NC-SA 4.0, non-commercial. The repository holds analysis code
+    and rendered output; the dataset is fetched, not redistributed.
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="cta">
+    <p>Eight hitters, from a 73.5 mph average exit velocity to 107.0.</p>
+    <a class="launch" href="driveline-hitting-dashboard.html" target="_blank" rel="noopener">
+      Open the dashboard
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>
+    </a>
+  </div>
+</div>
+
+</main>
+
+<footer class="wrap">
+  <span>Trey Chase &nbsp;&middot;&nbsp; Durham, North Carolina</span>
+  <span>&copy; 2026 Trey Chase</span>
+  <span><a href="../index.html">Back to the site</a></span>
+</footer>
+
+</body>
+</html>

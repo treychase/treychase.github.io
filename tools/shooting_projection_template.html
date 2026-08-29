@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projected True Shooting &middot; Trey Chase</title>
+<meta name="description" content="What every NBA player is likely to shoot next, not what he shot: true shooting reconstructed from tracking data and pooled toward each player's archetype, with the pooling constant fitted out of sample.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231F5C43'/%3E%3Ctext x='16' y='23' font-family='Helvetica,Arial,sans-serif' font-size='16' font-weight='bold' fill='%23ECEFE6' text-anchor='middle'%3ETC%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --paper:#ECEFE6;--panel:#E3E7DB;--ink:#14201B;--muted:#4B5A52;--faint:#7D8A82;
+  --field:#1F5C43;--field-deep:#153F2E;--gold:#DFA22C;
+  --line:rgba(20,32,27,.16);--line-soft:rgba(20,32,27,.08);
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"Helvetica Neue",Arial,sans-serif;
+  /* Two categorical data hues, validated against this paper surface: adjacent
+     CVD delta-E 21.9, both inside the lightness band and over 3:1 contrast.
+     The site's own green is chrome, not a mark - it reads gray at data size. */
+  --pooled:#2166AC;--raw:#B35806;
+  --team:#1F5C43;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans)}
+.bar{
+  position:sticky;top:0;z-index:20;background:var(--field);
+  border-bottom:1px solid var(--field-deep);
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:12px 22px;font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.bar a{color:rgba(236,239,230,.75);text-decoration:none}
+.bar a:hover{color:var(--paper)}
+.bar .who{color:var(--paper);font-weight:500}
+main{max-width:1120px;margin:0 auto;padding:22px}
+h1{font-size:clamp(1.3rem,3vw,1.9rem);font-weight:800;letter-spacing:-.02em;
+   margin:0 0 6px;text-transform:uppercase}
+.sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+     color:var(--muted);margin:0 0 18px}
+p.intro{font-size:16px;line-height:1.6;max-width:70ch;margin:0 0 22px}
+h2{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+   color:var(--muted);font-weight:700;margin:0 0 12px}
+
+/* ---- stat tiles ------------------------------------------------------ */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:1px;
+       background:var(--line);border:1px solid var(--line);margin-bottom:30px}
+.tile{background:var(--paper);padding:16px 18px}
+.tile .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+         color:var(--muted);display:block;margin-bottom:6px}
+.tile .v{font-size:1.85rem;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
+         line-height:1.05}
+.tile .n{font-size:12.5px;color:var(--muted);line-height:1.45;margin-top:6px}
+
+/* ---- controls + card -------------------------------------------------- */
+.controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:16px}
+.controls label{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;
+                text-transform:uppercase;color:var(--muted)}
+select{font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:999px;
+       border:1px solid var(--line);background:var(--paper);color:var(--ink);max-width:100%}
+.card{display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+      border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+      padding:18px 0;margin-bottom:26px}
+.shot-head{height:118px;width:161px;flex:0 0 auto;border-radius:6px;
+  background-color:var(--team);background-size:cover,cover;
+  background-position:center top,center;background-repeat:no-repeat,no-repeat}
+.who-block{flex:1 1 220px;min-width:0}
+.who-block .nm{font-size:clamp(1.3rem,3.4vw,1.9rem);font-weight:800;letter-spacing:-.02em;
+               line-height:1.1;margin:0 0 4px}
+.who-block .tm{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+               text-transform:uppercase;color:var(--muted)}
+.chip{display:inline-block;margin-top:9px;padding:5px 14px;border-radius:999px;
+      background:var(--team);color:#fff;font-family:var(--mono);font-size:10.5px;
+      letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.chip.none{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+
+/* the player's own interval, drawn to scale */
+.gauge{margin:0 0 4px}
+.gauge .rail{position:relative;height:116px}
+.gauge .axis{position:absolute;left:0;right:0;top:62px;height:1px;background:var(--line)}
+.gauge .band{position:absolute;top:44px;height:18px;border-radius:3px;
+             background:rgba(33,102,172,.20);
+             border-left:1px solid rgba(33,102,172,.5);
+             border-right:1px solid rgba(33,102,172,.5)}
+.gauge .pt{position:absolute;top:38px;height:30px;border-radius:2px}
+.gauge .pt.proj{width:8px;margin-left:-4px;background:var(--pooled);
+                box-shadow:0 0 0 2px var(--paper)}
+.gauge .pt.shot{width:10px;margin-left:-5px;background:transparent;
+                border:2px solid var(--faint);border-radius:50%;
+                height:10px;top:48px}
+.gauge .lab{position:absolute;font-family:var(--mono);font-size:11px;
+            white-space:nowrap;transform:translateX(-50%);text-align:center;line-height:1.35}
+.gauge .lab .n{display:block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+               color:var(--muted)}
+.gauge .lab.proj{top:2px;color:var(--ink);font-weight:700;font-size:15px}
+.gauge .lab.shot{top:88px;color:var(--muted)}
+.gauge .stem{position:absolute;width:1px;background:var(--line)}
+.gauge .tick{position:absolute;top:62px;height:5px;width:1px;background:var(--line)}
+.gauge .tickl{position:absolute;top:70px;font-family:var(--mono);font-size:9.5px;
+              color:var(--faint);transform:translateX(-50%)}
+.split{font-size:14.5px;line-height:1.6;margin:8px 0 0;color:var(--ink)}
+.split b{font-variant-numeric:tabular-nums}
+
+/* ---- charts ----------------------------------------------------------- */
+.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:30px}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+.panel{min-width:0}
+canvas{max-width:100%;height:auto;display:block}
+svg{max-width:100%;height:auto;display:block}
+.legend{display:flex;align-items:center;gap:16px;margin-top:12px;flex-wrap:wrap;
+        font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+        color:var(--muted)}
+.legend i{width:12px;height:12px;border-radius:2px;display:inline-block;vertical-align:-2px;
+          margin-right:6px;font-style:normal}
+.legend i.hollow{background:transparent;border:2px solid var(--faint);border-radius:50%}
+.legend i.solid{background:var(--pooled);border-radius:50%}
+.caption{font-size:13.5px;line-height:1.55;color:var(--muted);margin:12px 0 0;max-width:64ch}
+
+/* grouped bars, drawn in HTML so every number is real text */
+.bars{margin-top:2px}
+.grp{margin-bottom:16px}
+.grp .lb{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+         color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between}
+.b{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.b .fill{height:15px;border-radius:0 3px 3px 0;box-shadow:2px 0 0 0 var(--paper)}
+.b .v{font-family:var(--mono);font-size:11px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.gain{font-family:var(--mono);font-size:10.5px;color:var(--pooled);font-weight:700}
+
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line-soft)}
+thead th{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+         color:var(--muted);font-weight:700;border-bottom:1px solid var(--line)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px}
+tr.on td{background:var(--panel);font-weight:700}
+.tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .12s ease;
+     background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:11px;
+     padding:7px 10px;border-radius:4px;z-index:50;line-height:1.5;white-space:nowrap}
+.note{border-left:3px solid var(--gold);background:rgba(223,162,44,.1);
+      padding:14px 16px;margin:30px 0 0;font-size:15px;line-height:1.55;max-width:70ch}
+.note b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+        text-transform:uppercase;margin-bottom:6px;color:var(--field-deep)}
+.note code{font-family:var(--mono);font-size:13.5px;background:rgba(20,32,27,.06);
+           padding:1px 5px;border-radius:3px}
+hr.sep{border:0;border-top:1px solid var(--line);margin:36px 0 26px}
+footer{border-top:1px solid var(--line);margin-top:44px;padding:24px 22px 40px;
+       font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+       color:var(--muted);display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:space-between}
+footer a{color:inherit;text-decoration:none;border-bottom:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a href="../index.html#basketball">&#8249;&nbsp;&nbsp;Back to projects</a>
+  <span class="who">Projected true shooting</span>
+</div>
+
+<main>
+  <h1>Projected true shooting</h1>
+  <p class="sub" id="sub">2025&#8209;26 season</p>
+
+  <p class="intro">
+    What a player <em>shot</em> and what he is likely to shoot <em>next</em> are
+    different questions, and they come apart most for exactly the players a front
+    office is deciding about. A rotation big with 180 attempts at 64% is mostly
+    telling you about variance. This projects every player's true shooting by
+    pulling what he shot toward the players who are used the way he is used, by
+    an amount his volume decides &mdash; and the amount is fitted out of sample,
+    not chosen.
+  </p>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="controls">
+    <label for="team">Team</label>
+    <select id="team"></select>
+    <label for="player">Player</label>
+    <select id="player"></select>
+  </div>
+
+  <div class="card">
+    <div class="shot-head" id="head"></div>
+    <div class="who-block">
+      <div class="nm" id="pname">&mdash;</div>
+      <div class="tm" id="pteam"></div>
+      <span class="chip" id="parch"></span>
+    </div>
+  </div>
+
+  <div class="gauge">
+    <div class="rail" id="rail"></div>
+    <div class="legend">
+      <span><i class="hollow"></i>What he shot</span>
+      <span><i class="solid"></i>Projected, with its 95% interval</span>
+    </div>
+  </div>
+  <p class="split" id="split"></p>
+
+  <hr class="sep">
+
+  <div class="cols">
+    <div class="panel">
+      <h2>Every player, and how far he moves</h2>
+      <canvas id="fan" width="1180" height="720"></canvas>
+      <div class="legend">
+        <span><i class="hollow"></i>What he shot</span>
+        <span><i class="solid"></i>Projected</span>
+        <span id="fansel" style="color:var(--ink)"></span>
+      </div>
+      <p class="caption">
+        Each player is one pair of marks joined by a line: what he shot, and what
+        the model projects. Out on the right the two sit on top of each other
+        &mdash; a thousand attempts have already said what a player is. The fan
+        opens on the left, where a season is too short to tell a hot stretch from
+        a shooter. Attempts are on a log scale so that left-hand half is legible.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h2>Where each archetype shoots from</h2>
+      <table id="groups"><thead><tr>
+        <th>Archetype</th><th style="text-align:right">Players</th>
+        <th style="text-align:right">Pooled TS%</th>
+      </tr></thead><tbody></tbody></table>
+      <p class="caption" id="groupcap"></p>
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <h2>Does the pooling actually help?</h2>
+  <div class="cols">
+    <div class="panel">
+      <canvas id="curve" width="1000" height="440"></canvas>
+      <p class="caption" id="curvecap"></p>
+    </div>
+    <div class="panel">
+      <div class="bars" id="buckets"></div>
+      <div class="legend">
+        <span><i style="background:var(--raw)"></i>His own number alone</span>
+        <span><i style="background:var(--pooled)"></i>Pooled</span>
+      </div>
+      <p class="caption" id="bucketcap"></p>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Where the free throws come from</b>
+    True shooting needs free throws and these pulls carry no box score, but they
+    carry enough to recover one exactly: season points come from the possessions
+    tracking and every made field goal comes from the shot chart, so
+    <code>FTM = POINTS &minus; (2&middot;FGM + FG3M)</code> is arithmetic rather
+    than estimation, and it comes out non&#8209;negative for all
+    <span id="nplayers">450</span> players. Turning makes into attempts needs a
+    free throw percentage, and the tracking pulls carry free throws for the fouls
+    they do track &mdash; drives, paint, post and elbow touches, about half of a
+    player's trips, shot from the same line by the same player. That percentage is
+    itself pooled toward the league first, for the same reason as everything else
+    here: nine tracked makes should not buy a player a perfect stroke.
+  </div>
+</main>
+
+<div class="tip" id="tip"></div>
+
+<footer>
+  <span>&copy; 2026 Trey Chase</span>
+  <span><a href="../index.html">Back to the site</a></span>
+</footer>
+
+<script>
+(function () {
+var D = "__DATA__";
+var $ = function (id) { return document.getElementById(id); };
+var tip = $("tip");
+var POOLED = "#2166AC", RAW = "#B35806", FAINT = "#7D8A82", INK = "#14201B";
+var pct = function (v, d) { return (v * 100).toFixed(d === undefined ? 1 : d) + "%"; };
+
+function showTip(e, html) {
+  tip.innerHTML = html;
+  tip.style.opacity = 1;
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - 230) + "px";
+  tip.style.top = (e.clientY + 16) + "px";
+}
+function hideTip() { tip.style.opacity = 0; }
+
+/* ---- headshot: portrait over a monogram ------------------------------ */
+function monogram(name, color) {
+  var letters = name.split(/[\s\-']+/).filter(Boolean).slice(0, 2)
+    .map(function (w) { return w[0].toUpperCase(); }).join("") || "?";
+  return "data:image/svg+xml;base64," + btoa(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 190'>" +
+    "<rect width='260' height='190' fill='" + color + "'/>" +
+    "<text x='130' y='128' text-anchor='middle' font-size='84' font-weight='700' " +
+    "font-family='Helvetica,Arial,sans-serif' fill='#FFFFFF'>" + letters + "</text></svg>");
+}
+
+/* ---- stat tiles ------------------------------------------------------- */
+var cal = D.calibration;
+var gain = 1 - cal.rmse / cal.raw;
+$("tiles").innerHTML = [
+  ["Pooling constant", D.k.toFixed(0),
+   "attempts at which a player's own record and his archetype's count equally"],
+  ["Held-out error", "&minus;" + Math.round(gain * 100) + "%",
+   "against trusting a player's own number, over " + cal.n + " players"],
+  ["Under 100 attempts", "&minus;" + Math.round(cal.buckets[0].gain * 100) + "%",
+   "the same comparison for the thinnest samples, where it matters"],
+  ["League true shooting", pct(D.league),
+   "the pool of last resort, for a player with no archetype"]
+].map(function (t) {
+  return "<div class='tile'><span class='k'>" + t[0] + "</span>" +
+         "<span class='v'>" + t[1] + "</span><div class='n'>" + t[2] + "</div></div>";
+}).join("");
+$("nplayers").textContent = Object.keys(D.players).length;
+$("sub").textContent = D.season + " season · " + Object.keys(D.players).length +
+  " players · " + D.groups.length + " archetypes";
+
+/* ---- the fan ---------------------------------------------------------- */
+var fan = $("fan"), fx = fan.getContext("2d");
+var PAD = { l: 62, r: 18, t: 16, b: 46 };
+var TICKS = [50, 100, 200, 400, 800, 1600];
+var rows = Object.keys(D.players).map(function (id) {
+  var p = D.players[id];
+  return { id: id, n: p.n, tsa: p.tsa, ts: p.ts, pr: p.pr, a: p.a, w: p.w };
+});
+var xlo = Math.log10(Math.max(20, Math.min.apply(null, rows.map(function (r) { return r.tsa; }))));
+var xhi = Math.log10(Math.max.apply(null, rows.map(function (r) { return r.tsa; })) * 1.05);
+var ylo = 0.36, yhi = 0.82;
+function px(v) { return PAD.l + (Math.log10(v) - xlo) / (xhi - xlo) * (fan.width - PAD.l - PAD.r); }
+function py(v) { return fan.height - PAD.b - (v - ylo) / (yhi - ylo) * (fan.height - PAD.t - PAD.b); }
+
+var selected = null;
+function drawFan() {
+  fx.clearRect(0, 0, fan.width, fan.height);
+
+  /* recessive grid and axes, drawn first */
+  fx.strokeStyle = "rgba(20,32,27,.10)"; fx.lineWidth = 1;
+  fx.fillStyle = "#4B5A52"; fx.font = "500 15px ui-monospace,Menlo,monospace";
+  for (var v = 0.40; v <= 0.801; v += 0.10) {
+    var y = py(v);
+    fx.beginPath(); fx.moveTo(PAD.l, y); fx.lineTo(fan.width - PAD.r, y); fx.stroke();
+    fx.textAlign = "right"; fx.textBaseline = "middle";
+    fx.fillText(Math.round(v * 100) + "%", PAD.l - 10, y);
+  }
+  fx.textAlign = "center"; fx.textBaseline = "top";
+  TICKS.forEach(function (t) {
+    if (t < Math.pow(10, xlo) || t > Math.pow(10, xhi)) return;
+    fx.fillText(t.toLocaleString(), px(t), fan.height - PAD.b + 10);
+  });
+  fx.fillText("True shooting attempts", (PAD.l + fan.width - PAD.r) / 2,
+              fan.height - PAD.b + 30);
+
+  /* the league line: what a player with no record at all would be given */
+  fx.strokeStyle = "rgba(20,32,27,.30)"; fx.setLineDash([5, 5]);
+  fx.beginPath(); fx.moveTo(PAD.l, py(D.league)); fx.lineTo(fan.width - PAD.r, py(D.league));
+  fx.stroke(); fx.setLineDash([]);
+
+  /* Three passes rather than one per player: 450 dumbbells drawn end to end
+     smear into a blob, but every segment first, then every hollow mark, then
+     every filled one, reads as three layers and the fan shape comes out. */
+  var order = rows.slice().sort(function (a, b) { return a.tsa - b.tsa; });
+
+  fx.strokeStyle = "rgba(20,32,27,.34)"; fx.lineWidth = 1.4;
+  order.forEach(function (r) {
+    if (selected === r.id) return;
+    var x = px(r.tsa);
+    fx.beginPath(); fx.moveTo(x, py(r.ts)); fx.lineTo(x, py(r.pr)); fx.stroke();
+  });
+
+  fx.strokeStyle = FAINT; fx.lineWidth = 1.8;
+  order.forEach(function (r) {
+    if (selected === r.id) return;
+    fx.beginPath(); fx.arc(px(r.tsa), py(r.ts), 5.4, 0, Math.PI * 2); fx.stroke();
+  });
+
+  order.forEach(function (r) {
+    if (selected === r.id) return;
+    fx.beginPath(); fx.arc(px(r.tsa), py(r.pr), 5.6, 0, Math.PI * 2);
+    fx.fillStyle = POOLED; fx.fill();
+    /* a surface ring, so neighbouring marks stay countable where they overlap */
+    fx.strokeStyle = "#ECEFE6"; fx.lineWidth = 2; fx.stroke();
+  });
+
+  /* the selected player last and on top, with his name beside him */
+  var sel = rows.filter(function (r) { return r.id === selected; })[0];
+  if (sel) {
+    var x = px(sel.tsa), y1 = py(sel.ts), y2 = py(sel.pr);
+    fx.strokeStyle = INK; fx.lineWidth = 2.5;
+    fx.beginPath(); fx.moveTo(x, y1); fx.lineTo(x, y2); fx.stroke();
+    fx.beginPath(); fx.arc(x, y1, 7.5, 0, Math.PI * 2);
+    fx.strokeStyle = "#ECEFE6"; fx.lineWidth = 4; fx.stroke();
+    fx.strokeStyle = INK; fx.lineWidth = 2.6; fx.stroke();
+    fx.beginPath(); fx.arc(x, y2, 8, 0, Math.PI * 2);
+    fx.fillStyle = INK; fx.fill();
+    fx.strokeStyle = "#ECEFE6"; fx.lineWidth = 2.5; fx.stroke();
+    var right = x > fan.width * 0.62;
+    label(sel.n, x + (right ? -24 : 24), Math.min(y1, y2) - 14,
+          right ? "right" : "left", INK, "700 17px ui-monospace,Menlo,monospace");
+  }
+
+  /* Chart furniture goes on top of the marks, on its own paper, or it reads as
+     one more data point in a chart that already has nine hundred. */
+  label("league " + pct(D.league), fan.width - PAD.r - 8, py(D.league), "right");
+  label("True shooting %", PAD.l - 44, PAD.t + 8, "left");
+}
+
+function label(text, x, y, align, color, font) {
+  fx.font = font || "500 15px ui-monospace,Menlo,monospace";
+  fx.textAlign = align; fx.textBaseline = "middle";
+  var w = fx.measureText(text).width;
+  fx.fillStyle = "#ECEFE6";
+  fx.fillRect(align === "right" ? x - w - 6 : x - 6, y - 11, w + 12, 22);
+  fx.fillStyle = color || "#4B5A52";
+  fx.fillText(text, x, y);
+}
+
+fan.addEventListener("mousemove", function (e) {
+  var box = fan.getBoundingClientRect();
+  var mx = (e.clientX - box.left) * fan.width / box.width;
+  var my = (e.clientY - box.top) * fan.height / box.height;
+  var best = null, bestD = 18;
+  rows.forEach(function (r) {
+    var x = px(r.tsa);
+    var d = Math.min(Math.hypot(mx - x, my - py(r.ts)), Math.hypot(mx - x, my - py(r.pr)));
+    if (d < bestD) { bestD = d; best = r; }
+  });
+  if (!best) { hideTip(); fan.style.cursor = "default"; return; }
+  fan.style.cursor = "pointer";
+  showTip(e, "<b>" + best.n + "</b><br>" +
+    Math.round(best.tsa).toLocaleString() + " attempts &middot; " +
+    (best.a === undefined ? "not clustered" : D.groups[best.a].name) + "<br>" +
+    "shot " + pct(best.ts) + " &rarr; projected " + pct(best.pr) + "<br>" +
+    Math.round(best.w * 100) + "% his own record");
+});
+fan.addEventListener("mouseleave", hideTip);
+fan.addEventListener("click", function (e) {
+  var box = fan.getBoundingClientRect();
+  var mx = (e.clientX - box.left) * fan.width / box.width;
+  var my = (e.clientY - box.top) * fan.height / box.height;
+  var best = null, bestD = 18;
+  rows.forEach(function (r) {
+    var x = px(r.tsa);
+    var d = Math.min(Math.hypot(mx - x, my - py(r.ts)), Math.hypot(mx - x, my - py(r.pr)));
+    if (d < bestD) { bestD = d; best = r; }
+  });
+  if (best) { $("team").value = D.players[best.id].t; fillPlayers(D.players[best.id].t, best.id); }
+});
+
+/* ---- calibration curve ------------------------------------------------ */
+var cv = $("curve"), cc = cv.getContext("2d");
+(function drawCurve() {
+  var pad = { l: 68, r: 20, t: 18, b: 52 };
+  var ks = cal.curve.map(function (p) { return p[0]; });
+  var es = cal.curve.map(function (p) { return p[1]; });
+  var kMax = Math.max.apply(null, ks);
+  var eLo = Math.min.apply(null, es), eHi = Math.max.apply(null, es);
+  eLo -= (eHi - eLo) * 0.12; eHi += (eHi - eLo) * 0.06;
+  var X = function (k) { return pad.l + k / kMax * (cv.width - pad.l - pad.r); };
+  var Y = function (e) { return cv.height - pad.b - (e - eLo) / (eHi - eLo) * (cv.height - pad.t - pad.b); };
+
+  cc.clearRect(0, 0, cv.width, cv.height);
+  cc.font = "500 15px ui-monospace,Menlo,monospace"; cc.fillStyle = "#4B5A52";
+  cc.strokeStyle = "rgba(20,32,27,.10)"; cc.lineWidth = 1;
+  // round gridline values, not four arbitrary thirds of the data range
+  var step = 0.005;
+  for (var e = Math.ceil(eLo / step) * step; e <= eHi; e += step) {
+    var y = Y(e);
+    cc.beginPath(); cc.moveTo(pad.l, y); cc.lineTo(cv.width - pad.r, y); cc.stroke();
+    cc.textAlign = "right"; cc.textBaseline = "middle";
+    cc.fillText(e.toFixed(3), pad.l - 10, y);
+  }
+  cc.textAlign = "center"; cc.textBaseline = "top";
+  [0, 200, 400, 600, 800].forEach(function (k) {
+    if (k > kMax) return;
+    cc.fillText(String(k), X(k), cv.height - pad.b + 10);
+  });
+  cc.fillText("k, in attempts", (pad.l + cv.width - pad.r) / 2, cv.height - pad.b + 30);
+  cc.textAlign = "left"; cc.textBaseline = "top";
+  cc.fillText("held-out RMSE", pad.l - 46, 2);
+
+  cc.strokeStyle = POOLED; cc.lineWidth = 2.5; cc.lineJoin = "round";
+  cc.beginPath();
+  cal.curve.forEach(function (p, i) {
+    if (i === 0) cc.moveTo(X(p[0]), Y(p[1])); else cc.lineTo(X(p[0]), Y(p[1]));
+  });
+  cc.stroke();
+
+  var mx = X(D.k), my = Y(cal.rmse);
+  cc.strokeStyle = "rgba(20,32,27,.35)"; cc.lineWidth = 1; cc.setLineDash([4, 4]);
+  cc.beginPath(); cc.moveTo(mx, my); cc.lineTo(mx, cv.height - pad.b); cc.stroke();
+  cc.setLineDash([]);
+  cc.beginPath(); cc.arc(mx, my, 6.5, 0, Math.PI * 2);
+  cc.fillStyle = POOLED; cc.fill();
+  cc.strokeStyle = "#ECEFE6"; cc.lineWidth = 2.5; cc.stroke();
+  cc.fillStyle = INK; cc.font = "700 16px ui-monospace,Menlo,monospace";
+  cc.textAlign = mx > cv.width * 0.6 ? "right" : "left"; cc.textBaseline = "bottom";
+  cc.fillText("k = " + D.k.toFixed(0), mx + (mx > cv.width * 0.6 ? -12 : 12), my - 10);
+})();
+$("curvecap").innerHTML =
+  "Held-out error against every candidate <em>k</em>: fit on games before " +
+  cal.cut + ", scored on what each player shot afterwards. At <em>k</em>&nbsp;=&nbsp;0 " +
+  "a player is taken entirely at his word (" + cal.raw.toFixed(3) + "); far to the " +
+  "right his own record is thrown away and everyone is given the league mean (" +
+  cal.full.toFixed(3) + "). The curve has an interior minimum, which is the whole " +
+  "argument for partial pooling &mdash; and its location, not a preference, is what " +
+  "sets <em>k</em>.";
+
+/* ---- bucketed comparison ---------------------------------------------- */
+(function drawBuckets() {
+  var top = Math.max.apply(null, cal.buckets.map(function (b) { return b.raw; })) * 1.14;
+  $("buckets").innerHTML = cal.buckets.map(function (b) {
+    function bar(value, color) {
+      return "<div class='b'><span class='fill' style='width:" +
+        (value / top * 100).toFixed(1) + "%;background:" + color + "'></span>" +
+        "<span class='v'>" + value.toFixed(3) + "</span></div>";
+    }
+    return "<div class='grp'><div class='lb'><span>" + b.label + " attempts &middot; " +
+      b.n + " players</span><span class='gain'>&minus;" +
+      Math.round(b.gain * 100) + "%</span></div>" +
+      bar(b.raw, RAW) + bar(b.pooled, POOLED) + "</div>";
+  }).join("");
+})();
+$("bucketcap").innerHTML =
+  "The same held-out error, split by how many shots a player had actually taken " +
+  "by " + cal.cut + " &mdash; lower is better. Pooling helps in every band, but " +
+  "it is worth " + Math.round(cal.buckets[0].gain * 100) + "% to players under " +
+  "a hundred attempts and single digits to low double digits above that. The " +
+  "bands past the first are close enough to each other that their order is " +
+  "noise; the first one is not.";
+
+/* ---- archetype table --------------------------------------------------- */
+function drawGroups(activeIndex) {
+  $("groups").querySelector("tbody").innerHTML = D.groups.map(function (g, i) {
+    return "<tr class='" + (i === activeIndex ? "on" : "") + "'><td>" + g.name +
+      "</td><td class='num'>" + g.players + "</td><td class='num'>" +
+      pct(g.ts) + "</td></tr>";
+  }).join("");
+}
+$("groupcap").innerHTML =
+  "What a low-volume player is pulled toward, so a reserve big is measured " +
+  "against other bigs rather than against pull-up guards. The archetypes come " +
+  "from clustering every player on the shots he takes and the passing, rebounding " +
+  "and defence around them &mdash; see the " +
+  "<a href='nba-scouting.html' style='color:inherit'>scouting dashboard</a>. " +
+  "Players who fall under the minutes floor have no archetype and are pulled " +
+  "toward the league instead.";
+
+/* ---- the selected player ----------------------------------------------- */
+function render(pid) {
+  selected = String(pid);
+  var p = D.players[pid], team = D.teams[p.t];
+  document.documentElement.style.setProperty("--team", team.color);
+
+  $("head").style.backgroundImage =
+    "url('https://cdn.nba.com/headshots/nba/latest/1040x760/" + pid + ".png'), url('" +
+    monogram(p.n, team.color) + "')";
+  $("head").setAttribute("role", "img");
+  $("head").setAttribute("aria-label", p.n);
+  $("pname").textContent = p.n;
+  $("pteam").textContent = team.name + " · " + p.t + " · " + D.season;
+
+  var chip = $("parch");
+  chip.className = p.a === undefined ? "chip none" : "chip";
+  chip.textContent = p.a === undefined ? "Not clustered" : D.groups[p.a].name;
+
+  /* the gauge is drawn on a fixed scale so two players can be compared */
+  var lo = 0.40, hi = 0.78;
+  var at = function (v) { return ((Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo) * 100).toFixed(2); };
+  var low = p.pr - 1.96 * p.se, high = p.pr + 1.96 * p.se;
+  var ticks = [0.42, 0.48, 0.54, 0.60, 0.66, 0.72].map(function (t) {
+    return "<span class='tick' style='left:" + at(t) + "%'></span>" +
+           "<span class='tickl' style='left:" + at(t) + "%'>" + Math.round(t * 100) + "%</span>";
+  }).join("");
+  $("rail").innerHTML =
+    "<span class='axis'></span>" + ticks +
+    "<span class='band' style='left:" + at(low) + "%;width:" +
+      (at(high) - at(low)).toFixed(2) + "%'></span>" +
+    "<span class='stem' style='left:" + at(p.ts) + "%;top:58px;height:30px'></span>" +
+    "<span class='pt shot' style='left:" + at(p.ts) + "%'></span>" +
+    "<span class='lab shot' style='left:" + at(p.ts) + "%'>" + pct(p.ts) +
+      "<span class='n'>shot</span></span>" +
+    "<span class='pt proj' style='left:" + at(p.pr) + "%'></span>" +
+    "<span class='lab proj' style='left:" + at(p.pr) + "%'>" + pct(p.pr) +
+      "<span class='n'>projected</span></span>";
+
+  var groupName = p.a === undefined ? "the league" : D.groups[p.a].name;
+  $("split").innerHTML =
+    "On <b>" + Math.round(p.tsa).toLocaleString() + "</b> true shooting attempts " +
+    "(" + p.fga.toLocaleString() + " from the field, " + p.fta.toLocaleString() +
+    " from the line at " + pct(p.ftp, 0) + "), <b>" + Math.round(p.w * 100) +
+    "%</b> of the projection is what " + p.n + " shot and <b>" +
+    Math.round((1 - p.w) * 100) + "%</b> is " + groupName + " at " + pct(p.g) +
+    ". The 95% interval runs " + pct(low) + " to " + pct(high) + ".";
+
+  $("fansel").innerHTML = "&#9679;&nbsp; " + p.n;
+  drawGroups(p.a);
+  drawFan();
+  history.replaceState(null, "", "#" + p.t + "/" + pid);
+}
+
+/* ---- controls ---------------------------------------------------------- */
+function fillPlayers(tricode, pid) {
+  var select = $("player"), list = D.teams[tricode].players;
+  select.innerHTML = list.map(function (id) {
+    return "<option value='" + id + "'>" + D.players[id].n + "</option>";
+  }).join("");
+  select.value = (pid && list.indexOf(Number(pid)) >= 0) ? pid : list[0];
+  render(select.value);
+}
+$("team").innerHTML = Object.keys(D.teams).map(function (tricode) {
+  return "<option value='" + tricode + "'>" + D.teams[tricode].name + "</option>";
+}).join("");
+$("team").addEventListener("change", function () { fillPlayers(this.value, null); });
+$("player").addEventListener("change", function () { render(this.value); });
+
+var start = (location.hash || "").replace("#", "").split("/");
+var team0 = D.teams[start[0]] ? start[0] : Object.keys(D.teams)[0];
+$("team").value = team0;
+fillPlayers(team0, start[1]);
+})();
+</script>
+</body>
+</html>

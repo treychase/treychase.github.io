@@ -92,6 +92,9 @@ a{color:inherit}
 @media (max-width:760px){
   .lockup{grid-template-columns:1fr;gap:clamp(22px,5vw,32px)}
   .portrait{max-width:158px;order:-1}
+  /* the portrait moves above the name here, so the name has the full
+     column and can take a larger share of the viewport */
+  h1.name{font-size:clamp(2.25rem,14vw,6.5rem)}
 }
 .eyebrow{
   font-family:var(--mono);
@@ -104,10 +107,16 @@ h1.name{
   font-family:var(--display);
   font-variation-settings:"wdth" 96;
   font-weight:800;
-  font-size:clamp(3rem,12.5vw,8.25rem);
-  line-height:.86;letter-spacing:-.035em;margin:0;text-transform:uppercase;
+  /* One line, always. The cap is what the name column can hold beside the
+     portrait, measured against the *fallback* face rather than Bricolage:
+     Helvetica sets "Trey Chase" about 25 percent wider, so sizing for it
+     means the name cannot wrap while a web font is still loading, or if
+     Google Fonts never answers at all. */
+  font-size:clamp(2rem,9.5vw,7rem);
+  white-space:nowrap;
+  line-height:.9;letter-spacing:-.035em;margin:0;text-transform:uppercase;
 }
-h1.name .second{display:block;color:var(--field)}
+h1.name .second{color:var(--field)}
 
 /* Degrees. A grid so the logo, degree and school each get their own
    column and line up down the page; each row stays whole instead of
@@ -301,6 +310,21 @@ h2.section{
 .card p{margin:0 0 12px;font-size:16px;line-height:1.55}
 .card p:last-of-type{margin-bottom:0}
 
+/* A card carries one short line; the rest of the description opens under it,
+   so a category reads as a list rather than as a wall of prose. */
+.card .full p:last-child{margin-bottom:0}
+.card .more{
+  appearance:none;background:none;border:0;padding:0;cursor:pointer;
+  margin:12px 0 0;
+  font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--field);
+  display:inline-flex;align-items:center;gap:7px;
+  transition:color .18s ease;
+}
+.card .more:hover{color:var(--field-deep)}
+.card .more svg{width:11px;height:11px;transition:transform .22s ease}
+.card .more[aria-expanded="true"] svg{transform:rotate(180deg)}
+
 /* ---------- statline shared by cards and entries ---------- */
 .statline,
 .card .statline,
@@ -459,6 +483,9 @@ footer a:hover{color:var(--field);border-color:var(--field)}
   .portrait{order:0;max-width:none}
   .panel,.view{animation:none}
   .card,.entry,.role,.tile,.empty,.res-block{break-inside:avoid;page-break-inside:avoid}
+  /* on paper there is nothing to click, so print the whole description */
+  .card .full,.card .full[hidden]{display:block}
+  .card .more{display:none}
   .featured,.grid{break-inside:auto}
   h2.section,.featured-head{break-after:avoid}
   .tile{border-color:rgba(20,32,27,.3)}
@@ -475,7 +502,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
    <div class="lockup">
     <div>
     <p class="eyebrow">Data scientist <span>/</span> statistician <span>/</span> sports analytics</p>
-    <h1 class="name">Trey<span class="second">Chase</span></h1>
+    <h1 class="name">Trey <span class="second">Chase</span></h1>
     <ul class="contact">
       <li><a href="mailto:treychase64@gmail.com">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2.5 7 9.5 6 9.5-6"/></svg>
@@ -507,8 +534,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
   <div class="wrap">
     <div class="tablist" role="tablist" aria-label="Sections">
       <button class="tab" role="tab" id="tab-projects" aria-controls="panel-projects" data-tab="projects" aria-selected="true">Projects</button>
-      <button class="tab" role="tab" id="tab-articles" aria-controls="panel-articles" data-tab="articles" aria-selected="false">Articles</button>
-      <button class="tab" role="tab" id="tab-blogs"    aria-controls="panel-blogs"    data-tab="blogs"    aria-selected="false">Blogs</button>
+      <button class="tab" role="tab" id="tab-writing"  aria-controls="panel-writing"  data-tab="writing"  aria-selected="false">Writing</button>
       <button class="tab" role="tab" id="tab-resume"   aria-controls="panel-resume"   data-tab="resume"   aria-selected="false">Resume</button>
     </div>
   </div>
@@ -546,18 +572,11 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     </div>
   </section>
 
-  <!-- ============ ARTICLES ============ -->
-  <section class="panel" id="panel-articles" role="tabpanel" aria-labelledby="tab-articles" tabindex="0" hidden>
-    <h2 class="section">Articles</h2>
-    <p class="section-note">Long-form writing on modeling and measurement</p>
-    <div class="entries" data-render="articles"></div>
-  </section>
-
-  <!-- ============ BLOGS ============ -->
-  <section class="panel" id="panel-blogs" role="tabpanel" aria-labelledby="tab-blogs" tabindex="0" hidden>
-    <h2 class="section">Blogs</h2>
-    <p class="section-note">Shorter notes from inside the work</p>
-    <div class="entries" data-render="blogs"></div>
+  <!-- ============ WRITING ============ -->
+  <section class="panel" id="panel-writing" role="tabpanel" aria-labelledby="tab-writing" tabindex="0" hidden>
+    <h2 class="section">Writing</h2>
+    <p class="section-note">Long-form pieces and shorter notes from inside the work</p>
+    <div class="entries" data-render="writing"></div>
   </section>
 
   <!-- ============ RESUME ============ -->
@@ -734,6 +753,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
 
 <footer class="wrap">
   <span>Trey Chase &nbsp;&middot;&nbsp; Durham, North Carolina</span>
+  <span>&copy; 2026 Trey Chase</span>
   <span><a href="mailto:treychase64@gmail.com">Get in touch</a></span>
 </footer>
 
@@ -843,21 +863,33 @@ footer a:hover{color:var(--field);border-color:var(--field)}
       '<path d="M8 82h84"/>'
     + '<path d="M8 62h84" stroke-dasharray="3 5" opacity=".7"/>'
     + '<path d="M10 72 L26 54 L38 64 L52 26 L64 50 L78 40 L92 46"/>'
-    + '<circle cx="26" cy="54" r="3.5"/><circle cx="52" cy="26" r="3.5"/><circle cx="78" cy="40" r="3.5"/>'
+    + '<circle cx="26" cy="54" r="3.5"/><circle cx="52" cy="26" r="3.5"/><circle cx="78" cy="40" r="3.5"/>',
+    markets:
+      '<path d="M14 12v76h74"/>'
+    + '<path d="M30 34v34"/><rect x="23" y="42" width="14" height="20"/>'
+    + '<path d="M52 24v46"/><rect x="45" y="32" width="14" height="30"/>'
+    + '<path d="M74 18v40"/><rect x="67" y="26" width="14" height="24"/>'
   };
 
   var CATEGORIES = [
     { key: 'baseball',   name: 'Baseball',   blurb: 'Pitch quality, daily reporting', note: 'Pitch quality, expected outcomes, and daily reporting' },
-    { key: 'football',   name: 'Football',   blurb: 'Nothing yet',                    note: 'Positional and play-level work' },
+    { key: 'football',   name: 'Football',   blurb: 'Receiver separation, coverage', note: 'Positional and play-level work' },
     { key: 'basketball', name: 'Basketball', blurb: 'Projection, valuation',          note: 'Projection, valuation, and the data behind both' },
     { key: 'hockey',     name: 'Hockey',     blurb: 'Skater tracking',                note: 'Skating and positional tracking' },
-    { key: 'health',     name: 'Health',     blurb: 'Biomechanics, availability',     note: 'Biomechanics, availability, and the systems that keep the data honest' }
+    { key: 'health',     name: 'Health',     blurb: 'Biomechanics, availability',     note: 'Biomechanics, availability, and the systems that keep the data honest' },
+    { key: 'markets',    name: 'Markets',    blurb: 'Forecasting, uncertainty',       note: 'Time series work outside sport, where the interval matters more than the point' }
   ];
 
   var LABELS = {
     baseball: 'Baseball', football: 'Football', basketball: 'Basketball',
-    hockey: 'Hockey', health: 'Health', articles: 'Article', blogs: 'Blog'
+    hockey: 'Hockey', health: 'Health', markets: 'Markets',
+    writing: 'Writing', articles: 'Article', blogs: 'Blog'
   };
+
+  /* Articles and blogs share one tab. The two older section keys still work and
+     still label themselves, so an entry written before the merge keeps its own
+     badge instead of being relabelled or, worse, disappearing. */
+  var ALIASES = { writing: ['writing', 'articles', 'blogs'] };
 
   var EMPTY = {
     baseball:   ['Nothing on the board yet', 'Baseball work will be listed here as it is finished.'],
@@ -865,8 +897,8 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     basketball: ['Nothing on the board yet', 'Basketball work will be listed here as it is finished.'],
     hockey:     ['Nothing on the board yet', 'Hockey work will be listed here as it is finished.'],
     health:     ['Nothing here yet', 'Player health work will be listed here as it is finished.'],
-    articles:   ['First piece is being written', 'Published articles will be listed here, most recent first. Until then, the project write-ups are the closest thing to a paper trail.'],
-    blogs:      ['Nothing posted yet', 'Short posts on what broke, what the data actually looked like, and what changed the model will go here.']
+    markets:    ['Nothing here yet', 'Forecasting work outside sport will be listed here as it is finished.'],
+    writing:    ['First piece is being written', 'Articles and shorter posts will be listed here, most recent first: what broke, what the data actually looked like, and what changed the model. Until then, the project write-ups are the closest thing to a paper trail.']
   };
 
   var FILE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
@@ -875,7 +907,10 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  function rowsIn(key) { return DATA.filter(function (e) { return e && e.section === key; }); }
+  function rowsIn(key) {
+    var keys = ALIASES[key] || [key];
+    return DATA.filter(function (e) { return e && keys.indexOf(e.section) >= 0; });
+  }
   function pad(n) { return n < 10 ? '0' + n : String(n); }
 
   /* ---------- markup ---------- */
@@ -909,9 +944,32 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     return out;
   }
 
+  var CHEVRON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" '
+    + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+
+  /* The card shows `summary`, one line written for exactly this spot, and the
+     full description opens in its place. Entries with no summary fall back to
+     their first paragraph, and the toggle only appears when something is
+     actually hidden behind it. */
+  function prose(e) {
+    var body = (e.body || []).filter(Boolean);
+    var lead = e.summary || body[0] || '';
+    if (!lead) return '';
+    var rest = e.summary ? body : body.slice(1);
+    var html = '<p class="lead">' + esc(lead) + '</p>';
+    if (!rest.length) return html;
+    return html
+      + '<div class="full" hidden>'
+      +   rest.map(function (p) { return '<p>' + esc(p) + '</p>'; }).join('')
+      + '</div>'
+      + '<button class="more" type="button" aria-expanded="false">'
+      +   '<span>Read more</span>' + CHEVRON
+      + '</button>';
+  }
+
   function cardHTML(e, showBadge) {
     var html = '<article class="card"><h3>' + esc(e.title) + '</h3>' + statline(e);
-    (e.body || []).forEach(function (p) { if (p) html += '<p>' + esc(p) + '</p>'; });
+    html += prose(e);
     if (e.stack) html += '<p class="stack">' + esc(e.stack) + '</p>';
     html += extras(e);
     if (showBadge && LABELS[e.section]) {
@@ -927,7 +985,10 @@ footer a:hover{color:var(--field);border-color:var(--field)}
       ? '<a class="entry" href="' + esc(href) + '" target="_blank" rel="noopener">'
       : '<div class="entry">';
     var html = open + statline(e) + '<h3>' + esc(e.title) + '</h3>';
-    (e.body || []).forEach(function (p) { if (p) html += '<p>' + esc(p) + '</p>'; });
+    /* no toggle here: the whole row is a link, and a button inside one is
+       neither valid nor clickable in the way anyone expects */
+    var lead = e.summary || (e.body || []).filter(Boolean)[0] || '';
+    if (lead) html += '<p>' + esc(lead) + '</p>';
     return html + extras(e) + '</' + tag + '>';
   }
 
@@ -957,7 +1018,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
       picks.map(function (e) { return cardHTML(e, true); }).join('');
   }
 
-  /* ---------- articles and blogs ---------- */
+  /* ---------- writing ---------- */
   Array.prototype.forEach.call(document.querySelectorAll('[data-render]'), function (host) {
     var key = host.getAttribute('data-render');
     var rows = rowsIn(key);
@@ -1002,6 +1063,22 @@ footer a:hover{color:var(--field);border-color:var(--field)}
     var t = prev && tiles.querySelector('[data-cat="' + prev + '"]');
     if (t) t.focus();
   }
+
+  /* delegated, so it keeps working for cards drawn after this runs */
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest && ev.target.closest('.more');
+    if (!btn) return;
+    var card = btn.closest('.card');
+    if (!card) return;
+    var open = btn.getAttribute('aria-expanded') === 'true';
+    var lead = card.querySelector('.lead');
+    var full = card.querySelector('.full');
+    if (lead) lead.hidden = !open;
+    if (full) full.hidden = open;
+    btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+    var label = btn.querySelector('span');
+    if (label) label.textContent = open ? 'Read more' : 'Show less';
+  });
 
   tiles.addEventListener('click', function (ev) {
     var t = ev.target.closest('.tile');
@@ -1055,6 +1132,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
 
   /* open from the URL hash, so tabs and categories are both linkable */
   var hash = (location.hash || '').replace('#', '');
+  if (hash === 'articles' || hash === 'blogs') hash = 'writing';   /* links from before the merge */
   if (hash && main) {
     var tab = main.buttons.filter(function (b) { return b.dataset.tab === hash; })[0];
     if (tab) main.select(tab, false);

@@ -25,8 +25,42 @@ is written to disk or to local storage.
 **Offline.** Skip Connect, edit, then press *Download* and replace
 `data/projects.js` with the file it gives you and commit that.
 
-Everything on the Projects, Articles and Blogs tabs comes from
-`data/projects.js`. The counts on the category squares are derived from it, so
+## Cards open on click
+
+A card shows `summary` — one line, written for that spot — and nothing else.
+Pressing *Read more* swaps in `body`, the full description, and *Show less*
+puts it back. Categories read as a list of projects rather than a wall of
+prose, and nothing is lost: the long version is one click away.
+
+```js
+{ title:   "Finding undervalued NBA players",
+  summary: "A salary model that ranks production against what the market pays for it.",
+  body:    ["The full description, one string per paragraph.", "..."] }
+```
+
+Write the summary as a sentence that stands on its own, not a truncation of the
+first paragraph — the two are never shown at the same time. An entry with no
+summary falls back to its first paragraph, and then the toggle only appears if
+there are further paragraphs behind it, so nothing is ever hidden without a way
+to open it. Writing rows show the summary alone with no toggle, since the whole
+row is already a link. Printing ignores the toggle and prints every description
+in full.
+
+Every card on the site links to something you can open — a report, a notebook,
+a dashboard or a live app. An entry with nothing to click does not earn a card;
+either give it an artifact or leave it off.
+
+Everything on the Projects and Writing tabs comes from `data/projects.js`. An
+entry's `section` is one of `baseball`, `football`, `basketball`, `hockey`,
+`health`, `markets` or `writing`; the first six are the category squares on the
+Projects tab, and each is deep-linkable by hash, so `index.html#hockey` opens
+that category directly. Articles and shorter posts share the Writing tab —
+use a tag to say which one an entry is. The two older section keys `articles`
+and `blogs` still render there and still badge themselves, so nothing written
+before the merge has to be edited, and `#articles` and `#blogs` still open the
+tab. Adding a new category means
+adding it to `CATEGORIES`, `LABELS`, `EMPTY` and `SURFACES` in `index.html` and
+to `SECTIONS` in `admin.html`. The counts on the category squares are derived from it, so
 they never need updating by hand. The Resume tab is static markup in
 `index.html`.
 
@@ -121,9 +155,94 @@ projects/stuff-plus.html
 | --- | --- |
 | `Read the report` | `projects/stuff-plus.html` |
 
-`projects/mlb-daily-report.html` is a worked example: a full documentation page
-for the MLB Daily Report, styled to match the site, reached from the project
-card on both the front page and the Baseball tab.
+Three worked examples live in `projects/`, each a full documentation page styled
+to match the site and reached from its project card:
+
+| Page | Project |
+| --- | --- |
+| `projects/mlb-daily-report.html` | MLB Daily Report |
+| `projects/driveline-pitching.html` | OpenBiomechanics pitching dashboard |
+| `projects/driveline-hitting.html` | Driveline hitting dashboard |
+
+Two more pages in `projects/` are converted notebooks rather than write-ups:
+`nba-salary-model.html` and `velocity-projection.html`. Both were produced with
+`jupyter nbconvert --to html --embed-images`, then edited the same way — see
+the note under *Publishing a rendered Quarto document* below.
+
+## The hosted dashboards
+
+Seven files in `projects/` are not write-ups but the dashboards themselves,
+each a single self-contained page, so a project card can link to something that
+loads immediately rather than waiting on a Space to wake up:
+
+| File | Built by | Rebuild with |
+| --- | --- | --- |
+| `projects/driveline-dashboard.html` | [driveline-pitching](https://github.com/treychase/driveline-pitching) | `python dashboard_html.py --out dashboard.html` |
+| `projects/driveline-hitting-dashboard.html` | [driveline-hitting](https://github.com/treychase/driveline-hitting) | `save_dashboard(swing_dashboard(...))`, see that repo's README |
+| `projects/nfl-scouting.html` | [NFL_big_data_bowl_2026](https://github.com/treychase/NFL_big_data_bowl_2026) | `python -m nfl_scouting page`, then copy `dashboard/nfl-scouting.html` here |
+| `projects/skater-tracking-dashboard.html` | `tools/` in this repo, from the player-tracking analysis repo | `python tools/build_skater_dashboard.py --games-dir <that repo>/games` |
+| `projects/run-value-matrix.html` | `tools/` in this repo, from the run values repo | `python tools/build_run_values_page.py --rds <that repo>/master_run_values.rds` |
+| `projects/stock-forecast-dashboard.html` | `tools/` in this repo, from the Bayesian time-series repo | `python tools/build_stock_dashboard.py --repo <that repo>` |
+| `projects/nba-scouting.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_nba_scouting_page.py --repo <that repo>` |
+| `projects/true-shooting-projection.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_shooting_projection_page.py --repo <that repo>` |
+
+Screenshots for the project pages sit in `files/driveline/` and
+`files/driveline-hitting/`.
+
+The NFL scouting page is the third built elsewhere and copied in. Its
+template, its script and the build that assembles them live in the
+`dashboard/` directory of the analysis repo, next to the code that measures
+the field they draw - which is what lets the page take its field length and
+end zone depth from that project's own `config.py` rather than keeping a
+second copy of them here. Nothing about that page is edited in this repo; a
+change to how it looks or behaves is a change over there, and publishing it
+is copying the built file across.
+
+The skater replay is the one built here rather than copied in. `tools/` holds
+the two halves: `build_skater_dashboard.py` reads one period out of the
+`games/*.parquet` files in the tracking analysis repo and writes the positions
+into `skater_dashboard_template.html`, which draws the rink on a canvas and
+replays them. The rink geometry and palette are copied from `viz_functions.py`
+in that repo, so the web rink and the matplotlib one are the same rink; the positions
+are embedded as integers in tenths of a foot, the resolution the feed carries,
+which is what keeps a whole twenty-minute period under a megabyte and a half.
+The generator belongs with its data and can move into the analysis repo
+whenever that repo is the one being edited.
+
+`build_run_values_page.py` works the same way for the run value matrix, reading
+`master_run_values.rds` and writing it into `run_values_template.html` as a
+diverging heatmap. `build_nba_scouting_page.py` is the same shape again: it
+imports the nba-stats repo's own clustering rather than reimplementing it, bins
+every shot in that repo's shot chart pull onto one hex lattice shared by all
+582 players — which is what keeps the whole league inside 600 KB — and writes
+the result into `nba_scouting_template.html`. It is one of two pages here that
+fetch anything at view time: headshots come straight from the NBA's CDN by
+player id, stacked over an inline monogram so a player the CDN has no portrait
+for still gets a card. `build_shooting_projection_page.py` is its sibling, and
+imports that repo's reconstruction, calibration and pooling the same way; its
+payload is small because everything on the page is one number per player. `build_stock_dashboard.py` is the third of the pair
+kind: it imports the forecasting project's own model rather than reimplementing
+it, fits every ticker in that project's bundled offline sample, and writes the
+history, the fitted level, the regime probabilities and the seven-day fan into
+`stock_dashboard_template.html`. The model is that project's two-state
+Markov-switching DLM, so one `predict_fan` call per ticker returns every
+horizon out of a single posterior. Fitting a
+hundred tickers takes a few minutes, so the fitted numbers are cached in
+`tools/.stock_forecasts.json` (gitignored) and reused until you pass `--refit`. **Output only, deliberately.** The team's dashboards and
+their code stay private; what is published is a table of run value by outcome,
+count, outs and base state, which carries no player, game or date. Keep it that
+way when regenerating: the check is that nothing identifying anybody ends up in
+the payload.
+
+Both copies carry two things appended at the bottom of the file: the footer
+described under *Copyright* below, and a short script that starts the animation
+that is on screen, at the frame duration the figure's own Play button
+specifies. Plotly's own auto-play runs at its 500 ms default, which is
+slow enough that a swing or a delivery reads as a still image, and on the
+tabbed pitching dashboard it also animated the panels behind `display:none`.
+The pitching fix is upstream in `dashboard_html.py`, so a rebuilt file already
+carries it; the hitting one is added to the copy here. Re-apply it after
+replacing either file — or rebuild from a repo that has it.
 
 Tick **Button** on a link to render it as a filled call to action rather than a
 plain arrow link — useful for a "Launch the app" link that should stand out.
@@ -145,6 +264,37 @@ repository smaller, at the cost of the report living at a different address.
 
 Notebooks work the same way: `jupyter nbconvert --to html --embed-images
 notebook.ipynb` produces a single file for `projects/`.
+`projects/nba-salary-model.html` and `projects/velocity-projection.html` are the
+worked examples, each with the same two edits made to the converted file:
+
+- **The MathJax script tag is deleted.** nbconvert loads MathJax from a CDN and
+  configures `$...$` as inline math, so a page discussing salaries renders
+  "under $10M with a thin tail running past $60M" as an italic equation. Nothing
+  in that notebook is LaTeX, so dropping the tag both fixes the text and leaves
+  the page genuinely self-contained. Keep it if a notebook actually uses math,
+  and escape the dollar signs instead.
+- **A bar back to the site is prepended** to `<body>`, and the footer from
+  *Copyright* is appended, since a converted notebook is otherwise a dead end
+  with no way back to the site.
+
+The nbconvert output also carries a mermaid loader, but it exits before
+requesting anything when the notebook has no mermaid diagrams, so it can stay.
+
+## Copyright
+
+Every page carries `© 2026 Trey Chase` in its footer. `index.html` and the four
+hand-styled pages in `projects/` share the same `<footer class="wrap">` markup,
+so a new project page gets it by copying an existing one. The three generated
+pages — the converted notebook and the two dashboards — cannot inherit it, so
+they carry an inline-styled `<footer>` appended before `</body>`; re-add it
+after regenerating any of those files, along with the play script noted above.
+
+Bumping the year is a find and replace across those eight files:
+
+```bash
+grep -rl '© 2026 Trey Chase' index.html projects/*.html \
+  | xargs sed -i 's/© 2026 Trey Chase/© 2027 Trey Chase/'
+```
 
 ## Publishing on GitHub Pages
 
