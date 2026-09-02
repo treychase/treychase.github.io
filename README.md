@@ -171,7 +171,7 @@ the note under *Publishing a rendered Quarto document* below.
 
 ## The hosted dashboards
 
-Seven files in `projects/` are not write-ups but the dashboards themselves,
+Nine files in `projects/` are not write-ups but the dashboards themselves,
 each a single self-contained page, so a project card can link to something that
 loads immediately rather than waiting on a Space to wake up:
 
@@ -185,6 +185,7 @@ loads immediately rather than waiting on a Space to wake up:
 | `projects/stock-forecast-dashboard.html` | `tools/` in this repo, from the Bayesian time-series repo | `python tools/build_stock_dashboard.py --repo <that repo>` |
 | `projects/nba-scouting.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_nba_scouting_page.py --repo <that repo>` |
 | `projects/true-shooting-projection.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_shooting_projection_page.py --repo <that repo>` |
+| `projects/wearable-strain.html` | [PAMAP](https://github.com/treychase/PAMAP) | `python dashboard/build.py --data <PAMAP2_Dataset> --out wearable-strain.html`, then copy it here |
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
@@ -197,6 +198,17 @@ end zone depth from that project's own `config.py` rather than keeping a
 second copy of them here. Nothing about that page is edited in this repo; a
 change to how it looks or behaves is a change over there, and publishing it
 is copying the built file across.
+
+The wearable strain page is built elsewhere and copied in the same way. Its
+template and build live in `dashboard/` in the PAMAP repo, next to the
+clustering and the strain model they draw, so the page takes its state names,
+its palette and its diagnostics from that project's own code rather than
+keeping a second copy of them here. One caveat travels with it: PAMAP2 is
+published at `archive.ics.uci.edu`, and when that host is unreachable the build
+falls back to a stand-in cohort written in the dataset's exact schema. The page
+says which of the two it was built from, in its method note and in its
+subheading — check that note after regenerating, because it is the difference
+between a demonstration and a measurement.
 
 The skater replay is the one built here rather than copied in. `tools/` holds
 the two halves: `build_skater_dashboard.py` reads one period out of the

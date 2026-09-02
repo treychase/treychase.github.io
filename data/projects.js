@@ -300,6 +300,29 @@ window.SITE_DATA = {
     /* ---------------- HEALTH ---------------- */
     {
       section: "health",
+      title: "Reading strain off a wearable",
+      summary: "A third activity state no label in the data records, and a strain score predicted without ever seeing a heart rate.",
+      pinned: true,
+      year: "2026",
+      tags: ["Wearables"],
+      status: "",
+      body: [
+        "Nine people, three inertial units at a hundred hertz and a chest strap, through a twelve-activity protocol. Every ten-second window is scored for movement intensity, cadence, posture and cardiac response and then clustered, with no access to the activity labels, into active, static and recovery. Two of those states are easy and an accelerometer alone can find them. The third is the one the labels cannot express: sitting down before a run and sitting down after one are the same posture, the same activity id and the same near-zero acceleration, and what separates them is a heart still paying off the bout. Recovery is a state you can only see in the biometrics, which is the argument for putting a sensor on somebody rather than asking them what they did.",
+        "One k-means at k equals three over movement and cardiac features together does not find it, and how it fails is the reason for the design. Movement intensity spans three orders of magnitude from lying still to rope jumping; heart-rate reserve among still windows spans a few tenths. Given three clusters to spend, k-means buys the reduction on offer — it splits the active spread into moderate and vigorous and leaves every still window, baseline and recovering alike, in one lump, so the distinction the whole exercise exists for gets no cluster at all. Block-weighting the features does not fix it, because the problem is the shape of the distributions rather than the column counts. The fix is to match the structure of the question, which is hierarchical: movement features split active from still, then cardiac features split static from recovery among the still windows alone. Both stages stay unsupervised, and the failed flat fit is reported on the dashboard next to the one that works rather than quietly dropped.",
+        "Posture is computed and then deliberately kept out of the distance metric. Handed to a clustering it is a clean bimodal split, upright against lying, and any model spends a whole cluster separating lying from sitting — a real difference, but orthogonal to this taxonomy, where a man on a mat and a man in a chair are both simply still. It is read back afterwards as a description of the clusters, where it doubles as a check that lying and sitting did land in the same state.",
+        "Strain is Banister's TRIMP, which weights every minute by heart-rate reserve under an exponential, so a minute near maximum is worth far more than three easy ones. The model then predicts it from the accelerometers, the discovered state mix and the person's own body, and never from heart rate — there is a test that fails if any heart-rate-derived column reaches it. That is the direction with commercial value: accelerometers are cheap, always on and never lose contact, while heart rate is the channel that goes missing when the strap is in a drawer. Scoring is leave-one-subject-out, because windows from one person are serially correlated and share a body, so a random split would report a number that says nothing about the next person to put the watch on. Session strain lands within about a third of a point on a twenty-one point scale for a person the model has never seen.",
+        "One caveat, stated on the page as well: PAMAP2 is published at an address the build environment could not reach, so the dashboard as published was generated from a stand-in cohort written in the dataset's exact schema — the same fifty-four columns, sampling rates, activity ids and subject profiles, with acceleration synthesised in the sensor frame and heart rate integrated as a first-order response with a slower recovery constant than onset. The pipeline is the real one and runs on the real files unchanged; point it at a downloaded copy and every number is recomputed. Read the figures as a demonstration that the method works, not as measurements of anybody."
+      ],
+      stack: "Python, scikit-learn, pandas, NumPy",
+      links: [
+        { label: "Open the dashboard", url: "projects/wearable-strain.html", primary: true },
+        { label: "View code", url: "https://github.com/treychase/PAMAP" }
+      ],
+      files: []
+    },
+
+    {
+      section: "health",
       title: "Projecting peak velocity from biomechanics",
       summary: "Which of these arms throws hardest in five years? Peak velocity projected from delivery mechanics, with the uncertainty kept.",
       year: "2025",
