@@ -446,6 +446,10 @@ a.entry:hover{padding-left:12px}
 .role ul{margin:0;padding-left:19px}
 .role li{margin-bottom:7px;font-size:16px;line-height:1.5}
 .role li::marker{color:var(--gold)}
+/* The skills block is grouped now - languages, engineering, analytics - with
+   the group name set in the same small mono face the roles use. */
+.skill-group + .skill-group{margin-top:20px}
+.skill-group > .role-where{margin-bottom:9px}
 .skills{display:flex;flex-wrap:wrap;gap:7px;padding:0;margin:0;list-style:none}
 .skills li{
   font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
@@ -482,7 +486,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
   .lockup{grid-template-columns:minmax(0,1fr) 190px;align-items:end}
   .portrait{order:0;max-width:none}
   .panel,.view{animation:none}
-  .card,.entry,.role,.tile,.empty,.res-block{break-inside:avoid;page-break-inside:avoid}
+  .card,.entry,.role,.tile,.empty,.res-block,.skill-group{break-inside:avoid;page-break-inside:avoid}
   /* on paper there is nothing to click, so print the whole description */
   .card .full,.card .full[hidden]{display:block}
   .card .more{display:none}
@@ -589,16 +593,34 @@ footer a:hover{color:var(--field);border-color:var(--field)}
 
     <div class="res-block">
       <h3>Profile</h3>
-      <p class="summary">Data scientist and statistician with a track record of building end-to-end analytical tools, from automated data pipelines to deployed dashboards, that translate complex data into insights driving business and operational decisions.</p>
+      <p class="summary">Data scientist and applied statistician with experience in statistical modeling, data engineering, and analytics across sports, biomechanics, and performance data.</p>
     </div>
 
     <div class="res-block">
       <h3>Skills</h3>
-      <ul class="skills">
-        <li>Python</li><li>R</li><li>SQL</li><li>Shiny</li><li>Streamlit</li>
-        <li>Bayesian modeling</li><li>XGBoost</li><li>Snowflake</li>
-        <li>Data visualization</li><li>UI design</li><li>Communication</li>
-      </ul>
+
+      <div class="skill-group">
+        <p class="role-where">Languages</p>
+        <ul class="skills">
+          <li>Python</li><li>pandas</li><li>scikit-learn</li><li>XGBoost</li><li>PyMC</li>
+          <li>R</li><li>Shiny</li><li>brms / Stan</li><li>tidyverse</li><li>SQL</li>
+        </ul>
+      </div>
+
+      <div class="skill-group">
+        <p class="role-where">Data and engineering</p>
+        <ul class="skills">
+          <li>Snowflake</li><li>Airflow</li><li>Kafka</li><li>PySpark</li><li>FastAPI</li><li>Git</li>
+        </ul>
+      </div>
+
+      <div class="skill-group">
+        <p class="role-where">Analytics</p>
+        <ul class="skills">
+          <li>Bayesian modeling</li><li>Machine learning</li><li>Survival analysis</li>
+          <li>Data visualization</li><li>Biomechanics</li><li>Player health</li>
+        </ul>
+      </div>
     </div>
 
     <div class="res-block">
@@ -611,9 +633,9 @@ footer a:hover{color:var(--field);border-color:var(--field)}
         </div>
         <p class="role-where">National Basketball Association, Remote</p>
         <ul>
-          <li>Designed and deployed the organization's first compliance dashboards for a new large-scale data assessment program.</li>
-          <li>Enhanced existing analytics dashboards to uncover trends across large, longitudinal datasets, supporting stakeholder decision-making.</li>
-          <li>Partnered with data engineering to automate an end-to-end data processing pipeline for high-volume sensor and operational data.</li>
+          <li>Designed and deployed the organization's first two compliance dashboards for a new league-wide assessment program, driving player outreach and revised testing schedules.</li>
+          <li>Optimized four biomechanics visualization dashboards to surface trends across large, longitudinal datasets and identify player injury risk.</li>
+          <li>Developed a Python flight phase detection algorithm that identifies the key phases of a jump from biomechanical sensor data, letting managers extract player-level maxima and minima for comparison and injury-risk assessment.</li>
         </ul>
       </div>
 
@@ -622,38 +644,37 @@ footer a:hover{color:var(--field);border-color:var(--field)}
           <h4 class="role-title">Data Analyst Intern</h4>
           <span class="role-when">Jun 2025 to Aug 2025</span>
         </div>
-        <p class="role-where">National Basketball Association, New York</p>
+        <p class="role-where">National Basketball Association, New York, NY</p>
         <ul>
-          <li>Led the processing and engineering of large, complex datasets for internal analytics use.</li>
-          <li>Developed the organization's first analytics dashboards, providing advanced insight into performance and risk.</li>
-          <li>Optimized internal testing and scheduling processes, improving operational efficiency across teams.</li>
-          <li>Recognized with the Intern MVP Award for outstanding performance.</li>
+          <li>Engineered and processed more than 10 GB of high-frequency experimental data, integrating frame-by-frame physical metrics and scalar measurements across multiple trials.</li>
+          <li>Developed the organization's first four biomechanics analytics dashboards, providing advanced insight into player load distribution on the lower extremity joints over time.</li>
+          <li>Optimized internal testing and scheduling processes for the season, improving compliance monitoring across teams.</li>
+          <li>Recognized with the Intern MVP Award for outstanding performance, out of 71 candidates.</li>
         </ul>
       </div>
 
       <div class="role">
         <div class="role-head">
-          <h4 class="role-title">Head of Data Analytics</h4>
+          <h4 class="role-title">Data Scientist</h4>
           <span class="role-when">Aug 2024 to May 2026</span>
         </div>
-        <p class="role-where">Duke University Baseball, Durham</p>
+        <p class="role-where">Duke University Baseball, Durham, NC</p>
         <ul>
-          <li>Implemented a predictive outcomes model for a new leadership team to assess performance.</li>
-          <li>Collaborated on designing and implementing the user interface for a new analytics dashboard.</li>
-          <li>Built a new analytical module within an internal dashboard, enhancing evaluation capabilities.</li>
-          <li>Taught undergraduates essential skills such as programming in R, statistical theory, and applied analytics fundamentals.</li>
+          <li>Implemented a predictive outcomes model from batted ball metrics to assess player performance.</li>
+          <li>Developed the first internal biomechanics dashboard, leveraging season-long weight room data to track and quantify player improvement.</li>
+          <li>Mentored undergraduates in R programming, statistical theory, and applied analytics fundamentals.</li>
         </ul>
       </div>
 
       <div class="role">
         <div class="role-head">
-          <h4 class="role-title">Director of Operations Analytics</h4>
+          <h4 class="role-title">Director of Statistics</h4>
           <span class="role-when">May 2024 to Aug 2024</span>
         </div>
-        <p class="role-where">San Luis Obispo Blues, San Luis Obispo</p>
+        <p class="role-where">San Luis Obispo Blues Baseball, San Luis Obispo, CA</p>
         <ul>
           <li>Leveraged statistical methods, visualization, and internal software to manage organizational data.</li>
-          <li>Informed strategic decision-making by analyzing tracking data and collaborating with leadership.</li>
+          <li>Informed strategic decision-making by analyzing tracking data and streamlining scouting for the coaching staff.</li>
           <li>Helped lead the organization to its best result in three years, increasing its success rate by 19 percent year over year.</li>
         </ul>
       </div>
@@ -663,7 +684,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
           <h4 class="role-title">Data Analyst</h4>
           <span class="role-when">Jan 2022 to Jun 2023</span>
         </div>
-        <p class="role-where">Cal Poly Baseball, San Luis Obispo</p>
+        <p class="role-where">Cal Poly San Luis Obispo Baseball, San Luis Obispo, CA</p>
         <ul>
           <li>Constructed weekly analytical reports on external groups, utilizing large public datasets.</li>
           <li>Tracked and tagged performance data, captured and processed video and data submissions.</li>
@@ -680,37 +701,37 @@ footer a:hover{color:var(--field);border-color:var(--field)}
           <h4 class="role-title">Master's Portfolio Project</h4>
           <span class="role-when">Jan 2026 to May 2026</span>
         </div>
-        <p class="role-where">Duke University, Durham</p>
+        <p class="role-where">Duke University, Durham, NC</p>
         <ul>
-          <li>Developed a Bayesian index modeling a continuous outcome as a function of multiple mechanical and contextual covariates using brms and Stan on a multi-year dataset.</li>
-          <li>Produced a data-driven quality metric across multiple categories to streamline decision-making for end users.</li>
-          <li>Received the Award for Best Portfolio in the Duke Statistical Science Program.</li>
+          <li>Developed a hierarchical Bayesian linear model of a continuous outcome as a function of multiple mechanical and contextual covariates, using brms and Stan on a multi-year dataset.</li>
+          <li>Communicated the findings to the Duke coaching staff and presented the technical analysis to Duke Statistical Science faculty.</li>
+          <li>Received the Award for Best Portfolio in the Duke Statistical Science Program, out of 40 candidates.</li>
         </ul>
       </div>
 
       <div class="role">
         <div class="role-head">
-          <h4 class="role-title">Daily Reporting Dashboard</h4>
-          <span class="role-when">2025 to present</span>
+          <h4 class="role-title">MLB Daily Reporting Dashboard</h4>
+          <span class="role-when">Jan 2026 to present</span>
         </div>
         <p class="role-where">Personal project</p>
         <ul>
-          <li>Built and deployed an interactive dashboard summarizing daily results, with automated reporting, leaderboards, and detail views showing percentile rankings and profiles.</li>
-          <li>Engineered an automated daily data pipeline integrating multiple public APIs, precomputing datasets to cloud storage with a live-fetch fallback.</li>
-          <li>Built a recursive Bayesian model projecting outcomes with a 90 percent credible interval, updated daily using conjugate Beta-Bernoulli filtering.</li>
+          <li>Built and deployed an interactive dashboard summarizing game results, with automated reporting, leaderboards, and detail views showing percentile rankings and player profiles.</li>
+          <li>Engineered an automated daily pipeline integrating public APIs, precomputing datasets to cloud storage.</li>
+          <li>Implemented AI agents to validate the daily data refresh and the model results.</li>
         </ul>
       </div>
 
       <div class="role">
         <div class="role-head">
-          <h4 class="role-title">Data Analyst</h4>
+          <h4 class="role-title">Baseball Biomechanics Modeling</h4>
           <span class="role-when">Aug 2024 to Dec 2024</span>
         </div>
         <p class="role-where">Driveline Baseball</p>
         <ul>
-          <li>Independent project using a large open-source motion and sensor dataset.</li>
-          <li>Cleaned, transformed, and analyzed data to assess performance.</li>
-          <li>Contributed to applying data-driven insights toward development processes.</li>
+          <li>Processed marker-based motion capture data for hitters and pitchers in Python, using open Driveline Baseball data.</li>
+          <li>Fitted a Bayesian LASSO model predicting exit velocity for hitters and release speed for pitchers to assess performance.</li>
+          <li>Built a c3d animator to validate the model results and visualize player mechanics for stakeholders.</li>
         </ul>
       </div>
     </div>
@@ -723,13 +744,33 @@ footer a:hover{color:var(--field);border-color:var(--field)}
           <span class="role-when">Aug 2024 to May 2026</span>
         </div>
         <p class="role-where">Duke University &nbsp;&middot;&nbsp; GPA 3.70</p>
+        <ul>
+          <li>Coursework: Bayesian modeling, time series forecasting, applied machine learning, statistical programming, data engineering, causal inference, hierarchical modeling.</li>
+        </ul>
       </div>
       <div class="role">
         <div class="role-head">
           <h4 class="role-title">Bachelor of Science in Mathematics</h4>
           <span class="role-when">Sep 2019 to Jun 2023</span>
         </div>
-        <p class="role-where">Cal Poly San Luis Obispo &nbsp;&middot;&nbsp; GPA 3.60</p>
+        <p class="role-where">California Polytechnic State University, San Luis Obispo &nbsp;&middot;&nbsp; GPA 3.60</p>
+        <ul>
+          <li>Coursework: Linear algebra I to III, differential equations I and II, calculus II to IV, real analysis, complex analysis, microeconomics, macroeconomics.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="res-block">
+      <h3>Awards and memberships</h3>
+      <div class="role">
+        <ul>
+          <li>Award for Best Portfolio, Duke University Statistical Science thesis board.</li>
+          <li>Intern MVP, awarded by NBA intern peers.</li>
+          <li>Dean's List, Duke University, three times.</li>
+          <li>Dean's List, Cal Poly San Luis Obispo, five times.</li>
+          <li>Member, American Statistical Association.</li>
+          <li>Member, Duke Sports Analytics Club.</li>
+        </ul>
       </div>
     </div>
 
@@ -752,7 +793,7 @@ footer a:hover{color:var(--field);border-color:var(--field)}
 </main>
 
 <footer class="wrap">
-  <span>Trey Chase &nbsp;&middot;&nbsp; Durham, North Carolina</span>
+  <span>Trey Chase &nbsp;&middot;&nbsp; Cary, North Carolina</span>
   <span>&copy; 2026 Trey Chase</span>
   <span><a href="mailto:treychase64@gmail.com">Get in touch</a></span>
 </footer>

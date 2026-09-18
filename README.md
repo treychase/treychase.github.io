@@ -72,9 +72,11 @@ reads *Download PDF* and a Word file reads *Download DOCX*. Upload a new one
 from *Connect → Site files* in the editor and the path updates itself. Clearing
 `src` hides the button rather than leaving a link that 404s.
 
-It currently points at `files/trey_chase_resume.docx`, the Word file in the
-repo. A PDF is the better thing to hand someone from a portfolio site: export
-one and upload it, and the button relabels itself with no other change.
+It points at `files/trey_chase_cv.pdf`, so the button reads *Download PDF*.
+The PDF and the static markup on the Resume tab are two copies of the same CV:
+a new PDF means editing that markup in the same pass, or the page and the
+download disagree. The older `files/trey_chase_resume.docx` is still in the repo
+but is out of date and nothing links to it.
 
 ## School logos
 

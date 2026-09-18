@@ -56,7 +56,7 @@ window.SITE_DATA = {
        extension, so swapping the .docx for a .pdf is the only change
        needed. Clear src to hide the button entirely. */
     resume: {
-      src: "files/trey_chase_resume.docx"
+      src: "files/trey_chase_cv.pdf"
     },
 
     /* Degrees, shown under the name. Each row stays on one line and the
