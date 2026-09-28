@@ -146,6 +146,25 @@ window.SITE_DATA = {
     },
     {
       section: "baseball",
+      title: "Catcher framing in the shadow zone",
+      summary: "A called-strike model with umpire effects, and a 20-80 framing grade for every catcher on the pitches at the edge of the zone.",
+      year: "2026",
+      tags: ["Independent project", "Statcast"],
+      status: "",
+      body: [
+        "Every take of the 2025 and 2026 regular seasons that the plate umpire had to call, 740,166 of them across 4,859 games, with the home plate umpire joined on from the MLB Stats API because Statcast's own umpire field is empty. A LightGBM model predicts the call from location, the batter's zone, horizontal and vertical break, the count, handedness and the umpire, carried as a categorical feature so each of the 95 umpires gets his own zone. It is tuned by a grid search grouped by game and scores 0.989 AUC on held-out games. The catcher is left out on purpose, so whatever the model cannot explain about a call is what framing gets credited with.",
+        "The grade looks only at the shadow, the band a third of a zone either side of the edge, which is where a catcher can change a call. A ball stolen for a strike earns 1 point at the edge rising to 2 at the shadow's outer border. A strike given away costs 1 at the edge rising to 2 at the inner border. The net per 100 shadow takes goes on the 20-80 scouting scale.",
+        "Checked against the model, the grade holds up: the two correlate at 0.91 across 87 qualified catchers, and the strikes catchers stole carried a 37 percent model strike probability against 14 percent for every out-of-zone shadow take. The page carries the leaderboards, a zone heatmap for every catcher, the model's diagnostics, and a weekly GitHub Actions pipeline that rebuilds it all."
+      ],
+      stack: "Python, LightGBM, scikit-learn, pandas, GitHub Actions",
+      links: [
+        { label: "Open the dashboard", url: "projects/catcher-framing.html", primary: true },
+        { label: "View code", url: "https://github.com/treychase/Catcher-Framing" }
+      ],
+      files: []
+    },
+    {
+      section: "baseball",
       title: "OpenBiomechanics pitching dashboard",
       summary: "Pick a pitcher, watch the delivery in 3D, and read where the velocity comes from and what it costs the elbow.",
       pinned: true,
