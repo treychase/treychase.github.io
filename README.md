@@ -173,7 +173,7 @@ the note under *Publishing a rendered Quarto document* below.
 
 ## The hosted dashboards
 
-Nine files in `projects/` are not write-ups but the dashboards themselves,
+Ten files in `projects/` are not write-ups but the dashboards themselves,
 each a single self-contained page, so a project card can link to something that
 loads immediately rather than waiting on a Space to wake up:
 
@@ -188,6 +188,7 @@ loads immediately rather than waiting on a Space to wake up:
 | `projects/nba-scouting.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_nba_scouting_page.py --repo <that repo>` |
 | `projects/true-shooting-projection.html` | `tools/` in this repo, from the [nba-stats](https://github.com/treychase/nba-stats) repo | `python tools/build_shooting_projection_page.py --repo <that repo>` |
 | `projects/wearable-strain.html` | [PAMAP](https://github.com/treychase/PAMAP) | `python dashboard/build.py --data <PAMAP2_Dataset> --out wearable-strain.html`, then copy it here |
+| `projects/catcher-framing.html` | [Catcher-Framing](https://github.com/treychase/Catcher-Framing) | `python -m framing fetch && python -m framing run`, then copy `site/catcher-framing.html` here; its pipeline workflow does both weekly and, with a `SITE_DEPLOY_TOKEN` secret, pushes the copy itself |
 
 Screenshots for the project pages sit in `files/driveline/` and
 `files/driveline-hitting/`.
